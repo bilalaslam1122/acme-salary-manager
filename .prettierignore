@@ -1,0 +1,8 @@
+.next
+node_modules
+lib/db/generated
+prisma/migrations
+package-lock.json
+components/ui
+context
+.claude

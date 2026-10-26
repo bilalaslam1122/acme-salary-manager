@@ -4,18 +4,22 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 1, scaffold: in progress.
+- Phase 1, scaffold: complete. Phase 2 is next.
 
 ## Current Goal
 
-- Scaffold the project with Next.js, strict TypeScript, Tailwind, shadcn/ui, Prisma
-  (Postgres), Vitest and lint, with all scripts green.
+- Phase 2: the Prisma schema, the initial migration, and a deterministic seed of
+  10,000 employees, with tests.
 
 ## Completed
 
 - [x] Phase 0: filled in all six context files (`docs: add project context and spec files`).
 - [x] Phase 0: resolved the open questions and switched to Postgres everywhere
       (`docs: resolve open questions and adopt postgres everywhere`).
+- [x] Phase 1: scaffolded Next.js 16, strict TS, Tailwind v4 with the project tokens,
+      shadcn/ui (radix-nova), Prisma 7 + the pg adapter, Vitest (`unit` and
+      `component` projects), ESLint + Prettier, and the scripts. `lib/env.ts` is
+      Zod-validated with tests. `lint`, `typecheck`, `test` and `build` all pass.
 
 ## In Progress
 
@@ -25,7 +29,7 @@ Update this file after every meaningful implementation change.
 
 Each bullet is one verifiable unit and one commit.
 
-- [ ] **Phase 1:** `chore:` Scaffold Next.js (App Router) with strict TS, Tailwind,
+- [x] **Phase 1:** `chore:` Scaffold Next.js (App Router) with strict TS, Tailwind,
       shadcn/ui init, Prisma, Vitest + RTL, ESLint + Prettier, and the
       `dev`/`build`/`test`/`lint`/`db:*` scripts. Add `lib/env.ts`.
 - [ ] **Phase 2:** `feat:` Prisma schema, the initial migration, and a deterministic
@@ -42,7 +46,7 @@ Each bullet is one verifiable unit and one commit.
       and on salary change, plus the history API (+ tests, including rollback on
       failure).
 - [ ] **Phase 7:** `feat:` HR Manager auth: seeded user, login and logout API, session
-      cookie, and middleware (+ tests).
+      cookie, and `proxy.ts` (+ tests).
 - [ ] **Phase 8:** `feat:` UI: the app shell, login page, and employee directory table
       with URL-driven filters.
 - [ ] **Phase 9:** `feat:` UI: the create/edit employee sheet, terminate confirmation,
@@ -128,7 +132,7 @@ Each bullet is one verifiable unit and one commit.
   *Target:* under 10 s against local Postgres.
   *Alternative:* row-by-row `create`. It is far slower, about 10k round trips.
 - **AD-9: Stateless JWT session cookie (`jose`) and bcrypt.**
-  *Why:* one user, no session table, and it works in Edge middleware.
+  *Why:* one user, no session table, and `jose` runs anywhere, including `proxy.ts`.
   *Alternatives:* NextAuth or Auth.js are heavier than one seeded login needs, and DB
   sessions add a table.
   *Trade-off:* a token cannot be revoked before it expires (8 h).
@@ -151,6 +155,20 @@ Each bullet is one verifiable unit and one commit.
   slightly slower than with SQLite in-process.
   *Isolation:* a dedicated test database, truncated between tests, with integration
   files run sequentially.
+- **AD-13: Toolchain versions as scaffolded (2026-10-26).**
+  - Next.js 16.4 keeps the template defaults `cacheComponents` and
+    `partialPrefetching`, so data is dynamic unless it is marked `use cache`. Auth
+    lives in `proxy.ts`, Next 16's name for middleware.
+  - Prisma 7 needs a driver adapter (`@prisma/adapter-pg`) and `prisma.config.ts`.
+    The client is generated into `lib/db/generated/` (gitignored, regenerated on
+    `postinstall`) instead of `app/`, so that `lib/db` owns all database access.
+  - shadcn uses the `radix-nova` preset, which brings Lucide and Geist. Its `cn`
+    helper comes from the official `cn` package (shadcn-ui org) instead of
+    `clsx` + `tailwind-merge`.
+  - Vitest 4 uses native `resolve.tsconfigPaths`, so the `vite-tsconfig-paths` plugin
+    was dropped. `server-only` is aliased to an empty module in tests.
+  *Trade-off:* these are recent majors, so the bundled docs in
+  `node_modules/next/dist/docs` are the reference, not memory.
 
 ## AI Prompts Log
 
@@ -158,6 +176,7 @@ Each bullet is one verifiable unit and one commit.
 | - | ---- | ---------------- | --------------------------- |
 | 1 | 2026-10-26 | "You are a senior full-stack engineer… fill in all six context files (project overview, architecture, code standards, UI context, AI workflow rules, progress tracker) for an ACME salary manager; planning only, no app code; commit `docs: add project context and spec files`." | Reviewed against the brief. The AI raised these issues instead of silently picking an answer: the SQLite/Postgres provider split (Q1), the delete semantics (Q2), the 32-bit Int overflow risk for minor units (AD-1), and the absence of `percentile_cont` on SQLite, which led to a portable window-function median (AD-4). |
 | 2 | 2026-10-26 | "go ahead as suggest" (approve all recommendations, start work) | The AI adopted Postgres everywhere (AD-12) and simplified the median (AD-4 → `percentile_cont`) and search (AD-6 → `ILIKE`, dropping the `searchText` column), because the portability constraints no longer applied. Docker was not installed, so it used the running Homebrew Postgres 15 for dev and test. The docs were committed separately before Phase 1. |
+| 3 | 2026-10-26 | "start where you left off" (resume Phase 1) | Reviewed the generated scaffold rather than accepting it as-is:<br>• Prisma's `prisma7.config.ts` was renamed to `prisma.config.ts`, and the client output was moved out of `app/`.<br>• The unexpected `cn` dependency was verified as official before it was kept.<br>• A broken font variable (`--font-sans` referencing itself) was fixed.<br>• Token names that clashed with shadcn's `--accent-foreground` and `--ring` were renamed.<br>• The deprecated `vite-tsconfig-paths` plugin was removed.<br>• The user rejected AI co-author trailers on commits, so commits carry no AI attribution. |
 
 ## Session Notes
 
@@ -167,3 +186,7 @@ Each bullet is one verifiable unit and one commit.
 - 2026-10-26: The open questions are resolved. Local dev uses Homebrew Postgres 15 on
   `localhost:5432` (Docker is not installed on this machine). The databases are
   `acme_salary` (dev) and `acme_salary_test` (tests).
+- 2026-10-26: Phase 1 is done. Phase 2 adds an `integration` Vitest project (node
+  environment, `fileParallelism: false`, global setup running `prisma migrate deploy`
+  against `TEST_DATABASE_URL`), plus `TEST_DATABASE_URL` in `lib/env.ts` and a
+  `db:seed` script.

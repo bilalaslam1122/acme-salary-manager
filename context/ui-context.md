@@ -12,8 +12,12 @@ first-class: tabular figures, right-aligned, with the currency code visible.
 
 All components use these tokens, defined in `app/globals.css` on `:root`. shadcn
 variables (`--background`, `--foreground`, `--primary`, `--border`, `--ring`, and so
-on) are mapped onto these tokens, never set to separate values. Do not hardcode hex
-values in components.
+on) are mapped onto these tokens, never set to separate values. Project token names
+deliberately avoid shadcn's names. For example, shadcn's `--accent-foreground` is
+the text colour on a hover background, not the text colour on the blue accent. In
+components, use the Tailwind classes generated from the shadcn names (`bg-primary`,
+`text-muted-foreground`, `border-border`, `bg-success`, `bg-warning`). Do not
+hardcode hex values in components.
 
 | Role               | CSS Variable           | Value     |
 | ------------------ | ---------------------- | --------- |
@@ -24,9 +28,9 @@ values in components.
 | Muted text         | `--text-muted`         | `#6B7280` |
 | Primary accent     | `--accent-primary`     | `#2563EB` |
 | Accent hover       | `--accent-primary-hover` | `#1D4ED8` |
-| Accent foreground  | `--accent-foreground`  | `#FFFFFF` |
+| Text on accent     | `--accent-foreground-on-primary` | `#FFFFFF` |
 | Border             | `--border-default`     | `#E5E7EB` |
-| Focus ring         | `--ring`               | `#93C5FD` |
+| Focus ring         | `--focus-ring`         | `#93C5FD` |
 | Error              | `--state-error`        | `#DC2626` |
 | Warning            | `--state-warning`      | `#D97706` |
 | Success            | `--state-success`      | `#16A34A` |

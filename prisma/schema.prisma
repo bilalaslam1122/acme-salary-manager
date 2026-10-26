@@ -1,0 +1,10 @@
+// Models are added in Phase 2. See context/architecture.md for the ERD.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/db/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}

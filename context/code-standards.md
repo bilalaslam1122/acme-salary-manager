@@ -22,8 +22,11 @@
   Prisma-generated types for DB rows. Do not hand-write duplicate interfaces.
 - Services throw typed domain errors (`NotFoundError`, `ConflictError`,
   `ValidationError`) from `lib/errors.ts`. Never throw strings.
-- Read environment variables only through a Zod-validated `lib/env.ts`, never from
-  `process.env` directly.
+- Read environment variables only through `env()` from the Zod-validated
+  `lib/env.ts`, never from `process.env` directly. The one exception is
+  `prisma.config.ts`, which runs in the Prisma CLI.
+- Import server-only modules (`lib/db`, `lib/services`) with `import "server-only"`
+  at the top, so they can never end up in a client bundle.
 
 ## Next.js
 
@@ -50,7 +53,7 @@
 
 - Parse the input first. Run `schema.safeParse()` on the body and query, and return
   `400` on failure before any other logic runs.
-- Enforce auth before any read or mutation. Middleware is the first line of defence,
+- Enforce auth before any read or mutation. `proxy.ts` is the first line of defence,
   and handlers also call `requireSession()`.
 - Use a consistent response shape:
   - Success is `{ "data": T }`. Paginated success is

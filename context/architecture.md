@@ -4,11 +4,11 @@
 
 | Layer      | Technology                                   | Role                                                                 |
 | ---------- | -------------------------------------------- | -------------------------------------------------------------------- |
-| Framework  | Next.js (App Router) + TypeScript (strict)   | Pages (server components) and HTTP API (route handlers) in one app   |
+| Framework  | Next.js 16 (App Router, Cache Components) + TypeScript (strict) | Pages (server components) and HTTP API (route handlers) in one app |
 | UI         | Tailwind CSS + shadcn/ui + Lucide icons      | Design tokens, accessible primitives, icons                          |
 | Charts     | Recharts                                     | Insights bar charts and histogram                                     |
 | Validation | Zod                                          | Parse every external input (request bodies, query strings, env)      |
-| ORM        | Prisma                                       | Schema, migrations, typed queries; `$queryRaw` for aggregations      |
+| ORM        | Prisma 7 + `@prisma/adapter-pg`              | Schema, migrations, typed queries; `$queryRaw` for aggregations. The client is generated into `lib/db/generated/` (gitignored) |
 | Database   | PostgreSQL 15+ everywhere (dev, test, prod)  | Relational storage for all data; separate `_test` database for tests |
 | Auth       | bcryptjs + `jose` (signed JWT in HttpOnly cookie) | Single seeded HR Manager login, stateless session                 |
 | Seed data  | `@faker-js/faker` with a fixed seed          | Deterministic 10,000-employee dataset                                 |
@@ -43,7 +43,7 @@
 flowchart LR
   Browser -->|HTML / RSC| Pages["app/ (server components)"]
   Browser -->|fetch JSON| API["app/api/* route handlers"]
-  MW["middleware: session check"] -.guards.-> Pages
+  MW["proxy.ts: session check"] -.guards.-> Pages
   MW -.guards.-> API
   Pages --> Services["lib/services/*"]
   API -->|Zod parse| Validation["lib/validation/*"]
@@ -143,7 +143,7 @@ because several countries can share a currency (EUR).
 - `POST /api/auth/login` checks the credentials and sets a signed JWT (HS256, secret
   `SESSION_SECRET`, 8-hour expiry) in an `HttpOnly`, `Secure`, `SameSite=Lax`
   cookie. `POST /api/auth/logout` clears the cookie.
-- Next.js middleware verifies the cookie on every request except `/login`,
+- Next.js `proxy.ts` (Next 16's replacement for `middleware.ts`) verifies the cookie on every request except `/login`,
   `/api/auth/login` and static assets. Pages without a valid session redirect to
   `/login`. APIs return `401 { error }`.
 - The signed-in user can do everything. The user's id is recorded as `changedById` on
