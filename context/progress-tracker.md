@@ -4,11 +4,12 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 2, schema and seed: complete. Phase 3 is next.
+- Phase 3, employee service and CRUD API: complete. Phase 4 is next.
 
 ## Current Goal
 
-- Phase 3: the employee service, the CRUD API and Zod validation, with tests.
+- Phase 4: the list API with pagination, search, filters, sort and indexes, with
+  tests.
 
 ## Completed
 
@@ -25,6 +26,16 @@ Update this file after every meaningful implementation change.
       4.4 s locally, and two runs give byte-identical data (md5 of every row).
       Tests: 10 unit tests on the generator, 4 integration tests on the writer, and
       a Vitest `integration` project against `acme_salary_test`.
+- [x] Phase 3:
+      - Employee service with create, get, update and terminate.
+      - SalaryHistory is written in the same transaction on create and on salary or
+        currency change, with a row lock against concurrent edits.
+      - `POST /api/employees` and `GET`/`PATCH`/`DELETE /api/employees/[id]`.
+      - Zod schemas, domain errors, and the shared `handle()` error mapping.
+      - Migration `add_old_currency_to_salary_history`.
+      - 47 new tests: unit tests for validation and HTTP mapping, integration tests
+        for the service and route handlers. A mutation check confirmed that removing
+        the history write fails 2 tests.
 
 ## In Progress
 
@@ -40,16 +51,17 @@ Each bullet is one verifiable unit and one commit.
 - [x] **Phase 2:** `feat:` Prisma schema, the initial migration, and a deterministic
       10,000-employee seed (+ tests: count, determinism, currency/country
       consistency, and one history row per employee).
-- [ ] **Phase 3:** `feat:` Employee service, the CRUD API (`/api/employees`,
+- [x] **Phase 3:** `feat:` Employee service, the CRUD API (`/api/employees`,
       `/api/employees/[id]`), Zod schemas, and the error mapping (+ tests).
 - [ ] **Phase 4:** `feat:` The list API with pagination, search, filters and sort,
       plus indexes (+ tests, including a performance smoke test at 10k).
 - [ ] **Phase 5:** `feat:` The insights service and API: min, max, avg and median by
       group, headcount by country, histogram, and USD normalization (+ tests with
       hand-computed expectations).
-- [ ] **Phase 6:** `feat:` SalaryHistory written in the same transaction on create
-      and on salary change, plus the history API (+ tests, including rollback on
-      failure).
+- [ ] **Phase 6:** `feat:` The salary history read API
+      (`GET /api/employees/[id]/history`, newest first, paginated) plus explicit
+      rollback tests. The transactional write moved into Phase 3, so Invariant 5
+      holds from the first salary write.
 - [ ] **Phase 7:** `feat:` HR Manager auth: seeded user, login and logout API, session
       cookie, and `proxy.ts` (+ tests).
 - [ ] **Phase 8:** `feat:` UI: the app shell, login page, and employee directory table
@@ -64,8 +76,23 @@ Each bullet is one verifiable unit and one commit.
 
 ## Open Questions
 
-- None open. All questions were resolved on 2026-10-26, when the user approved the
-  recommendations:
+Phase 3 added these, each implemented as the stated assumption. Each needs
+confirmation:
+
+9. **Employee code:** server-generated as `ACME-{id:05}`. HR cannot enter their
+   existing codes from Excel. Changing this would be a small, additive change if
+   needed.
+10. **Terminated employees are read-only.** Editing or re-terminating one returns 409,
+    and no reinstate action exists.
+11. **Hire date:** any valid calendar date is accepted, including a future date for
+    planned hires. No other restriction is defined.
+12. **Salary change reason:** optional, and only allowed when the salary actually
+    changes (otherwise 400).
+
+Resolved:
+
+- All of the original questions were resolved on 2026-10-26, when the user approved
+  the recommendations:
   1. **Database:** Postgres everywhere, in dev, test and prod (AD-12). Locally this is
      any Postgres 15+ (Homebrew or Docker), with a separate `_test` database.
   2. **Delete:** terminate is a soft delete (`terminatedAt`). The employee is excluded
@@ -188,6 +215,25 @@ Each bullet is one verifiable unit and one commit.
   local currency at the seeded FX rate and rounded to 100 major units (INR 1,000,
   JPY 10,000). The history is 0–3 past raises of 3–12%, back-computed so that the
   chain ends exactly at the current salary.
+- **AD-17: `SalaryHistory.oldCurrency`.** When an employee moves country, the old and
+  new amounts are in different currencies. A single `currency` column would make the
+  audit row wrong.
+  *Alternatives:* forbid country moves (unrealistic), or write two rows (confusing).
+- **AD-18: Concurrency on salary edits.** `updateEmployee` takes
+  `SELECT … FOR UPDATE` on the employee row inside the transaction, so two concurrent
+  edits cannot both record the same "old" salary.
+  *Trade-off:* one extra round trip per update, which is negligible.
+- **AD-19: Employee ids are reserved with `nextval()` before insert.** The code
+  `ACME-{id}` is then written in the same INSERT, with no placeholder and no second
+  UPDATE.
+- **AD-20: Error mapping is centralized in `lib/http/handle.ts`.**
+  - Zod failures and `ValidationError` return 400 with `details.fieldErrors`.
+  - `NotFoundError` returns 404, and `ConflictError` returns 409.
+  - Anything else returns 500 with a generic message; the error is logged on the
+    server and never sent to the client.
+  - Malformed JSON returns 400.
+  The `{ fieldErrors }` shape is designed to drive the inline form errors in
+  Phase 9.
 
 ## AI Prompts Log
 
@@ -197,6 +243,7 @@ Each bullet is one verifiable unit and one commit.
 | 2 | 2026-10-26 | "go ahead as suggest" (approve all recommendations, start work) | The AI adopted Postgres everywhere (AD-12) and simplified the median (AD-4 → `percentile_cont`) and search (AD-6 → `ILIKE`, dropping the `searchText` column), because the portability constraints no longer applied. Docker was not installed, so it used the running Homebrew Postgres 15 for dev and test. The docs were committed separately before Phase 1. |
 | 3 | 2026-10-26 | "start where you left off" (resume Phase 1) | Reviewed the generated scaffold rather than accepting it as-is:<br>• Prisma's `prisma7.config.ts` was renamed to `prisma.config.ts`, and the client output was moved out of `app/`.<br>• The unexpected `cn` dependency was verified as official before it was kept.<br>• A broken font variable (`--font-sans` referencing itself) was fixed.<br>• Token names that clashed with shadcn's `--accent-foreground` and `--ring` were renamed.<br>• The deprecated `vite-tsconfig-paths` plugin was removed.<br>• The user rejected AI co-author trailers on commits, so commits carry no AI attribution. |
 | 4 | 2026-10-26 | "yes" (start Phase 2), then "go ahead; start with something else, test it again after some time if it is blocking" | Every result was checked by running it, not by reading the code:<br>• Determinism was proven with an md5 of every row across two seed runs.<br>• Plausibility was checked with USD medians per country computed in SQL.<br>• The seed was timed at 4.4 s against its 10 s target.<br>• Bugs caught: a stale Prisma client after `migrate dev`, and a 30 s `npx` overhead in test setup.<br>• Long builds now run in the background while the docs are updated. |
+| 5 | 2026-10-26 | "continue" (Phase 3) | The AI checked the Next 16 route handler docs (`RouteContext`, async `params`) before writing handlers. During design it found an audit gap (country moves change currency) and a concurrency race on "old salary", and fixed both (AD-17, AD-18). It moved the transactional history write from Phase 6 into Phase 3, to avoid shipping a known invariant violation. A mutation test confirmed the history tests fail when the write is removed. Product rules it had to assume are listed as Open Questions 9–12 instead of being decided silently. |
 
 ## Session Notes
 

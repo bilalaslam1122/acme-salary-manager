@@ -74,7 +74,8 @@ model SalaryHistory {
   employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   oldSalaryMinor Int?     @map("old_salary_minor") // null for the initial salary
   newSalaryMinor Int      @map("new_salary_minor")
-  currency       String   @db.VarChar(3)
+  currency       String   @db.VarChar(3) // currency of newSalaryMinor
+  oldCurrency    String?  @map("old_currency") @db.VarChar(3) // currency of oldSalaryMinor; differs after a country move
   reason         String?
   changedById    Int?     @map("changed_by_id") // null = system (seed/import)
   changedBy      User?    @relation(fields: [changedById], references: [id], onDelete: Restrict)

@@ -63,6 +63,13 @@
   validation, `401` no session, `404` not found, `409` conflict (duplicate email or
   code), `500` unexpected. A 500 response never leaks a stack trace or SQL.
 - Map domain errors to HTTP in one shared helper, `lib/http/handle.ts`.
+- Route handlers are wrapped in `handle()`. They read input with `readJson()` and
+  `parseInput(schema, …)`, and return `json(data, status)` or `noContent()`. Route
+  params are typed with the global `RouteContext<"/api/…">`.
+- `DELETE /api/employees/[id]` terminates the employee (a soft delete) and returns
+  204.
+- Services take an `ActorContext` (`actorId`, plus an optional `now` for
+  deterministic tests) for any write that is audited.
 - REST resources are `/api/employees`, `/api/employees/[id]`,
   `/api/employees/[id]/history`, `/api/insights/*`, `/api/reference` (countries,
   departments, titles) and `/api/auth/*`.

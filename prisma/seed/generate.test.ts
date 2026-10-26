@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { generateDataset, MAX_SALARY_MINOR, type Dataset } from "./generate";
+import { MAX_SALARY_MINOR } from "../../lib/validation/employee";
+import { generateDataset, type Dataset } from "./generate";
 import { COUNTRIES, USD_PER_UNIT_MICROS } from "./reference-data";
 
 describe("generateDataset", () => {
@@ -64,6 +65,7 @@ describe("generateDataset", () => {
     for (const employee of dataset.employees) {
       const first = firstByEmployee.get(employee.id!);
       expect(first?.oldSalaryMinor).toBeNull();
+      expect(first?.oldCurrency).toBeNull();
       expect(first?.changedAt).toEqual(employee.hireDate);
     }
   });
@@ -74,6 +76,7 @@ describe("generateDataset", () => {
       const rows = rowsByEmployee.get(employee.id!) ?? [];
       for (let i = 1; i < rows.length; i++) {
         expect(rows[i]!.oldSalaryMinor).toBe(rows[i - 1]!.newSalaryMinor);
+        expect(rows[i]!.oldCurrency).toBe(rows[i - 1]!.currency);
         expect(new Date(rows[i]!.changedAt).getTime()).toBeGreaterThan(
           new Date(rows[i - 1]!.changedAt).getTime(),
         );

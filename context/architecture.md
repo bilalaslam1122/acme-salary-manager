@@ -119,7 +119,8 @@ erDiagram
     int employeeId FK
     int oldSalaryMinor "null on create"
     int newSalaryMinor
-    string currency
+    string currency "of newSalaryMinor"
+    string oldCurrency "of oldSalaryMinor; null on create"
     string reason "optional"
     int changedById FK "null = system (seed/import)"
     datetime changedAt
@@ -174,7 +175,9 @@ the app records the signed-in user. Every foreign key uses `ON DELETE RESTRICT`
 5. Every create or change of `salaryMinor` writes a SalaryHistory row in the same
    database transaction. No code path updates salary outside
    `lib/services/employees`.
-6. An employee's `salaryCurrency` always equals the currency of their country.
+6. An employee's `salaryCurrency` always equals the currency of their country. The
+   server derives it, and clients never send it. Changing country requires a new
+   salary in the same request.
 7. The seed is deterministic: a fixed PRNG seed and no `Date.now()`. The same seed
    produces identical rows.
 8. Postgres is the only supported database, in dev, test and prod. Tests run against a

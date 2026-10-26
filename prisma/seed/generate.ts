@@ -15,9 +15,6 @@ import {
 export const DEFAULT_SEED = 42;
 export const DEFAULT_EMPLOYEE_COUNT = 10_000;
 
-/** Keeps salary_minor inside a Postgres int4 (see AD-1). */
-export const MAX_SALARY_MINOR = 2_000_000_000;
-
 const MAX_PAST_RAISES = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -94,6 +91,8 @@ export function generateDataset(options: GenerateOptions = {}): Dataset {
         id: salaryHistory.length + 1,
         employeeId: id,
         currency: country.currencyCode,
+        // Seeded employees never move country, so raises keep the same currency.
+        oldCurrency: change.oldSalaryMinor === null ? null : country.currencyCode,
         changedById: null,
         ...change,
       });
