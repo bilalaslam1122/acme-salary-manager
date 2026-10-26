@@ -66,6 +66,10 @@
   validation, `401` no session, `404` not found, `409` conflict (duplicate email or
   code), `500` unexpected. A 500 response never leaks a stack trace or SQL.
 - Map domain errors to HTTP in one shared helper, `lib/http/handle.ts`.
+- Any `try/catch` around Next.js APIs must call `unstable_rethrow(error)` first.
+  Next 16 throws internal errors for prerender bail-out (`request.url`, `cookies()`),
+  `notFound()` and `redirect()`, and they must not be turned into 500s. `handle()`
+  already does this.
 - Route handlers are wrapped in `handle()`. They read input with `readJson()` and
   `parseInput(schema, …)`, and return `json(data, status)` or `noContent()`. Route
   params are typed with the global `RouteContext<"/api/…">`.
@@ -73,6 +77,9 @@
   204.
 - Services take an `ActorContext` (`actorId`, plus an optional `now` for
   deterministic tests) for any write that is audited.
+- Insights endpoints are `/api/insights/summary`, `/api/insights/by-group` and
+  `/api/insights/distribution`. They return amounts in USD cents and include
+  `meta.fx`.
 - REST resources are `/api/employees`, `/api/employees/[id]`,
   `/api/employees/[id]/history`, `/api/insights/*`, `/api/reference` (countries,
   departments, titles) and `/api/auth/*`.

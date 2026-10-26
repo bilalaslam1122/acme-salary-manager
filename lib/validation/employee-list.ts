@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { employeeFiltersShape } from "./employee-filters";
 
 export const MAX_PAGE_SIZE = 100;
 export const DEFAULT_PAGE_SIZE = 50;
@@ -21,14 +22,7 @@ export const employeeListQuerySchema = z.object({
     .max(100)
     .optional()
     .transform((value) => (value ? value : undefined)),
-  countryCode: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .regex(/^[A-Z]{2}$/, "Use an ISO 3166 alpha-2 code")
-    .optional(),
-  departmentId: z.coerce.number().int().positive().optional(),
-  jobTitle: z.string().trim().min(1).max(100).optional(),
+  ...employeeFiltersShape,
   includeTerminated: z.stringbool().default(false),
   sort: z.enum(EMPLOYEE_SORT_FIELDS).default("name"),
   order: z.enum(["asc", "desc"]).default("asc"),

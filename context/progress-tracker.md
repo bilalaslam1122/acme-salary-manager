@@ -4,12 +4,12 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 4, employee directory list API: complete. Phase 5 is next.
+- Phase 5, insights service and API: complete. Phase 6 is next.
 
 ## Current Goal
 
-- Phase 5: the insights service: aggregations, median and currency normalization,
-  with tests.
+- Phase 6: the salary history read API (`GET /api/employees/[id]/history`) plus
+  rollback tests.
 
 ## Completed
 
@@ -50,6 +50,23 @@ Update this file after every meaningful implementation change.
         needed.
       - 35 new tests, including a 10k-row performance test (3–32 ms against the
         300 ms budget).
+- [x] Phase 5:
+      - Insights in USD cents at the active FX version, for active employees only.
+        Each response carries `meta.fx` (version and effective date).
+      - `GET /api/insights/summary`: headcount, min, max, avg and median.
+      - `GET /api/insights/by-group?groupBy=country|department|jobTitle`: the same
+        stats per group, highest median first. This also covers headcount by
+        country and a title's pay across countries.
+      - `GET /api/insights/distribution`: a histogram of 20 or fewer $5k-aligned
+        buckets.
+      - Shared filters (country, department, job title) are in one SQL and
+        validation module, and the directory was refactored onto it.
+      - 19 new tests:
+        - Hand-computed fixtures across 4 currencies, including an even-count
+          median.
+        - An independent JS calculation over 300 generated employees.
+        - The histogram clamp, empty sets, and the APIs.
+        - Performance at 10k: 19–29 ms against the 500 ms budget.
 
 ## In Progress
 
@@ -69,7 +86,7 @@ Each bullet is one verifiable unit and one commit.
       `/api/employees/[id]`), Zod schemas, and the error mapping (+ tests).
 - [x] **Phase 4:** `feat:` The list API with pagination, search, filters and sort,
       plus indexes (+ tests, including a performance smoke test at 10k).
-- [ ] **Phase 5:** `feat:` The insights service and API: min, max, avg and median by
+- [x] **Phase 5:** `feat:` The insights service and API: min, max, avg and median by
       group, headcount by country, histogram, and USD normalization (+ tests with
       hand-computed expectations).
 - [ ] **Phase 6:** `feat:` The salary history read API
@@ -264,6 +281,24 @@ Resolved:
     - Both are far inside the budget. The `pg_trgm` upgrade path stays deferred.
   *Alternative:* `findMany` for name, title and date sorts plus raw SQL for USD. That
   means two code paths that must apply identical filters, which risks drift.
+- **AD-22: Insights are three focused endpoints over one `salaries` CTE.**
+  - The CTE holds active employees joined to the active FX rates, with USD cents.
+  - `summary`, `by-group` and `distribution` map onto the dashboard's stat cards,
+    tabbed chart and histogram. Changing the "Salary by…" tab refetches only
+    `by-group`.
+  - Grouping columns come from a whitelist map, as AD-21 does for sorting.
+  - The rates use an INNER join, so a currency with no active rate is excluded
+    rather than mis-converted. All seeded currencies have rates.
+  *Alternative:* one `/api/insights` endpoint returning everything, which means more
+  over-fetching on every tab change.
+- **AD-23: Money is reported in USD cents (integers).** This is the minor-units rule
+  applied to the output. AVG and median are rounded to whole cents in SQL. The UI
+  formats cents through `lib/money`.
+- **AD-24: Histogram layout is a pure function (`lib/services/histogram.ts`).** A
+  min/max query feeds it, then a `GROUP BY` bucket query counts the rows. Values
+  past the last edge are folded into the last bucket with `LEAST(…, n-1)`, so there
+  are never more than 20 buckets. Empty buckets are filled in JS: at most 20 array
+  slots, which is not aggregation over rows.
 
 ## AI Prompts Log
 
@@ -275,6 +310,7 @@ Resolved:
 | 4 | 2026-10-26 | "yes" (start Phase 2), then "go ahead; start with something else, test it again after some time if it is blocking" | Every result was checked by running it, not by reading the code:<br>• Determinism was proven with an md5 of every row across two seed runs.<br>• Plausibility was checked with USD medians per country computed in SQL.<br>• The seed was timed at 4.4 s against its 10 s target.<br>• Bugs caught: a stale Prisma client after `migrate dev`, and a 30 s `npx` overhead in test setup.<br>• Long builds now run in the background while the docs are updated. |
 | 5 | 2026-10-26 | "continue" (Phase 3) | The AI checked the Next 16 route handler docs (`RouteContext`, async `params`) before writing handlers. During design it found an audit gap (country moves change currency) and a concurrency race on "old salary", and fixed both (AD-17, AD-18). It moved the transactional history write from Phase 6 into Phase 3, to avoid shipping a known invariant violation. A mutation test confirmed the history tests fail when the write is removed. Product rules it had to assume are listed as Open Questions 9–12 instead of being decided silently. |
 | 6 | 2026-10-26 | "sure" (confirm assumptions 9–12, then Phase 4) | Before writing tests, the AI ran EXPLAIN ANALYZE against the 10k dev data to confirm index use and timings. It used hand-computed USD expectations (for example £50,000 × 1.27 = $63,500) to verify the conversion across GBP, USD, JPY (exponent 0) and INR. The performance test was run verbose to record the real timings, not just a pass. An SQL-injection-style `sort` value is covered by a test. |
+| 7 | 2026-10-26 | "continue" (Phase 5) | The insights SQL was verified two independent ways: hand-computed fixtures across GBP, USD, JPY and INR (including an even-count median), and a JS calculation over 300 generated employees compared against the SQL output. Self-review caught one weak test: the "≤ 20 buckets" case never triggered the clamp. It was replaced with an input that produces 21 buckets without the clamp. The build log exposed a bug from Phase 3: `handle()` caught Next's prerender bail-out error and logged it as a 500. It was fixed with `unstable_rethrow`, verified by a test using `notFound()`, and mutation-checked. The Phase 4 commit had also been made while an overlapping build was failing; from now on, the build must be clean before every commit. The shared filter SQL was extracted, and the existing directory tests were the safety net for that refactor. |
 
 ## Session Notes
 

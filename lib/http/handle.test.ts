@@ -1,7 +1,22 @@
+import { notFound } from "next/navigation";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import { handle, parseInput, readJson, toErrorResponse } from "./handle";
+
+describe("handle", () => {
+  it("rethrows Next.js control-flow errors instead of returning a 500", async () => {
+    const route = handle(async () => notFound());
+    await expect(route()).rejects.toThrow();
+  });
+
+  it("maps application errors to a response", async () => {
+    const route = handle(async () => {
+      throw new NotFoundError("missing");
+    });
+    expect((await route()).status).toBe(404);
+  });
+});
 
 describe("toErrorResponse", () => {
   it("maps NotFoundError to 404", async () => {

@@ -4,7 +4,8 @@ import type {
   EmployeeSortField,
 } from "@/lib/validation/employee-list";
 import { prisma } from "./client";
-import { activeFxVersionCte, salaryUsdCentsSql } from "./fx";
+import { employeeFilterConditions, whereSql } from "./employee-filters";
+import { activeFxVersionCte, queryActiveFx, salaryUsdCentsSql } from "./fx";
 import { Prisma } from "./generated/prisma/client";
 import { escapeLike } from "./sql";
 
@@ -71,27 +72,15 @@ export async function queryEmployeeDirectory(
   const countQuery = prisma.$queryRaw<{ total: bigint }[]>`
     SELECT COUNT(*) AS total FROM employees e ${where}`;
 
-  const fxQuery = prisma.$queryRaw<{ version: string }[]>`
-    WITH ${activeFxVersionCte} SELECT version FROM active_fx`;
-
-  const [rows, [count], [fx]] = await Promise.all([rowsQuery, countQuery, fxQuery]);
+  const [rows, [count], fx] = await Promise.all([rowsQuery, countQuery, queryActiveFx()]);
   return { rows, total: Number(count?.total ?? 0), fxVersion: fx?.version ?? null };
 }
 
 function whereClause(query: EmployeeListQuery): Prisma.Sql {
-  const conditions: Prisma.Sql[] = [];
+  const conditions = employeeFilterConditions(query);
 
   if (!query.includeTerminated) {
     conditions.push(Prisma.sql`e.terminated_at IS NULL`);
-  }
-  if (query.countryCode) {
-    conditions.push(Prisma.sql`e.country_code = ${query.countryCode}`);
-  }
-  if (query.departmentId) {
-    conditions.push(Prisma.sql`e.department_id = ${query.departmentId}`);
-  }
-  if (query.jobTitle) {
-    conditions.push(Prisma.sql`e.job_title = ${query.jobTitle}`);
   }
   if (query.q) {
     const pattern = `%${escapeLike(query.q)}%`;
@@ -104,7 +93,5 @@ function whereClause(query: EmployeeListQuery): Prisma.Sql {
     )`);
   }
 
-  return conditions.length === 0
-    ? Prisma.empty
-    : Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
+  return whereSql(conditions);
 }

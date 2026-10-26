@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { ConflictError, DomainError, NotFoundError, ValidationError } from "@/lib/errors";
@@ -84,7 +85,11 @@ export function toErrorResponse(error: unknown): NextResponse<ErrorBody> {
   return errorResponse(500, "INTERNAL_ERROR", "Something went wrong");
 }
 
-/** Wraps a route handler so every failure goes through `toErrorResponse`. */
+/**
+ * Wraps a route handler so every application failure goes through `toErrorResponse`.
+ * Next.js control-flow errors (prerender bail-out on `request.url`/`cookies()`,
+ * `notFound()`, `redirect()`) are rethrown so Next can handle them.
+ */
 export function handle<Args extends unknown[]>(
   handler: (...args: Args) => Promise<Response>,
 ): (...args: Args) => Promise<Response> {
@@ -92,6 +97,7 @@ export function handle<Args extends unknown[]>(
     try {
       return await handler(...args);
     } catch (error) {
+      unstable_rethrow(error);
       return toErrorResponse(error);
     }
   };
