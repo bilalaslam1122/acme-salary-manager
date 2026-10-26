@@ -1,4 +1,5 @@
-// Models are added in Phase 2. See context/architecture.md for the ERD.
+// See context/architecture.md for the ERD, storage model and invariants.
+// Tables and columns are snake_case so raw SQL (lib/db) needs no quoted identifiers.
 
 generator client {
   provider = "prisma-client"
@@ -7,4 +8,88 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+model Country {
+  code             String     @id @db.VarChar(2) // ISO-3166 alpha-2
+  name             String     @unique
+  currencyCode     String     @map("currency_code") @db.VarChar(3) // ISO-4217
+  currencyExponent Int        @map("currency_exponent") // minor-unit digits (JPY = 0)
+  employees        Employee[]
+
+  @@map("countries")
+}
+
+model Department {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  employees Employee[]
+
+  @@map("departments")
+}
+
+model Employee {
+  id             Int             @id @default(autoincrement())
+  employeeCode   String          @unique @map("employee_code")
+  firstName      String          @map("first_name")
+  lastName       String          @map("last_name")
+  email          String          @unique
+  jobTitle       String          @map("job_title")
+  departmentId   Int             @map("department_id")
+  department     Department      @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  countryCode    String          @map("country_code") @db.VarChar(2)
+  country        Country         @relation(fields: [countryCode], references: [code], onDelete: Restrict)
+  salaryMinor    Int             @map("salary_minor") // annual gross base, minor units
+  salaryCurrency String          @map("salary_currency") @db.VarChar(3) // always the country's currency
+  hireDate       DateTime        @map("hire_date") @db.Date
+  terminatedAt   DateTime?       @map("terminated_at") // null = active (soft delete)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  salaryHistory  SalaryHistory[]
+
+  @@index([countryCode])
+  @@index([departmentId])
+  @@index([jobTitle])
+  @@index([lastName, firstName])
+  @@index([hireDate])
+  @@index([terminatedAt])
+  @@map("employees")
+}
+
+model ExchangeRate {
+  id               Int      @id @default(autoincrement())
+  version          String // e.g. "2026-10"; rows are immutable
+  effectiveDate    DateTime @map("effective_date") @db.Date
+  currencyCode     String   @map("currency_code") @db.VarChar(3)
+  usdPerUnitMicros Int      @map("usd_per_unit_micros") // USD per 1 major unit × 1,000,000
+
+  @@unique([version, currencyCode])
+  @@index([effectiveDate])
+  @@map("exchange_rates")
+}
+
+model SalaryHistory {
+  id             Int      @id @default(autoincrement())
+  employeeId     Int      @map("employee_id")
+  employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  oldSalaryMinor Int?     @map("old_salary_minor") // null for the initial salary
+  newSalaryMinor Int      @map("new_salary_minor")
+  currency       String   @db.VarChar(3)
+  reason         String?
+  changedById    Int?     @map("changed_by_id") // null = system (seed/import)
+  changedBy      User?    @relation(fields: [changedById], references: [id], onDelete: Restrict)
+  changedAt      DateTime @map("changed_at")
+
+  @@index([employeeId, changedAt])
+  @@map("salary_history")
+}
+
+model User {
+  id            Int             @id @default(autoincrement())
+  email         String          @unique
+  passwordHash  String          @map("password_hash")
+  name          String
+  salaryChanges SalaryHistory[]
+
+  @@map("users")
 }

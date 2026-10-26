@@ -92,7 +92,10 @@
   (`TEST_DATABASE_URL`, for example `acme_salary_test`). It is migrated with
   `prisma migrate deploy` in global setup and truncated between tests. Integration test
   files run sequentially (no file parallelism) so they never interfere. Tests never
-  touch the dev database.
+  touch the dev database: global setup refuses any database whose name does not end
+  in `_test`. Vitest projects are `unit` (node, `*.test.ts` under lib, prisma and
+  app), `component` (jsdom, `*.test.tsx`) and `integration` (node,
+  `tests/integration/**`).
 - Test one behaviour per test, with a readable name such as
   `it("writes a SalaryHistory row when salary changes")`.
 - Build test data with small factories in `tests/factories.ts`. Do not reuse the

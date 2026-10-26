@@ -4,12 +4,11 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 1, scaffold: complete. Phase 2 is next.
+- Phase 2, schema and seed: complete. Phase 3 is next.
 
 ## Current Goal
 
-- Phase 2: the Prisma schema, the initial migration, and a deterministic seed of
-  10,000 employees, with tests.
+- Phase 3: the employee service, the CRUD API and Zod validation, with tests.
 
 ## Completed
 
@@ -20,6 +19,12 @@ Update this file after every meaningful implementation change.
       shadcn/ui (radix-nova), Prisma 7 + the pg adapter, Vitest (`unit` and
       `component` projects), ESLint + Prettier, and the scripts. `lib/env.ts` is
       Zod-validated with tests. `lint`, `typecheck`, `test` and `build` all pass.
+- [x] Phase 2: Prisma schema (snake_case tables, indexes per AD-7) and the `init`
+      migration. The deterministic seed creates 10,000 employees, 22,950 salary
+      history rows, 8 countries, 9 departments, 15 titles and 7 FX rates. It runs in
+      4.4 s locally, and two runs give byte-identical data (md5 of every row).
+      Tests: 10 unit tests on the generator, 4 integration tests on the writer, and
+      a Vitest `integration` project against `acme_salary_test`.
 
 ## In Progress
 
@@ -32,7 +37,7 @@ Each bullet is one verifiable unit and one commit.
 - [x] **Phase 1:** `chore:` Scaffold Next.js (App Router) with strict TS, Tailwind,
       shadcn/ui init, Prisma, Vitest + RTL, ESLint + Prettier, and the
       `dev`/`build`/`test`/`lint`/`db:*` scripts. Add `lib/env.ts`.
-- [ ] **Phase 2:** `feat:` Prisma schema, the initial migration, and a deterministic
+- [x] **Phase 2:** `feat:` Prisma schema, the initial migration, and a deterministic
       10,000-employee seed (+ tests: count, determinism, currency/country
       consistency, and one history row per employee).
 - [ ] **Phase 3:** `feat:` Employee service, the CRUD API (`/api/employees`,
@@ -169,6 +174,20 @@ Each bullet is one verifiable unit and one commit.
     was dropped. `server-only` is aliased to an empty module in tests.
   *Trade-off:* these are recent majors, so the bundled docs in
   `node_modules/next/dist/docs` are the reference, not memory.
+- **AD-14: The seed uses explicit ids, then resets the sequences.** Ids are assigned
+  in the generator (1..n), so history rows can reference employees without a
+  read-back. Afterwards `setval` moves each serial sequence past the maximum id.
+  *Alternative:* `createManyAndReturn` with id mapping. It returns rows in insert
+  order, but Postgres does not guarantee that order, which risks wrong FK links.
+- **AD-15: `SalaryHistory.changedById` is nullable (null = system).** The seeded
+  history predates the HR Manager user, which is created in Phase 7.
+  *Alternative:* a fake "system" user row. It would pollute the users table and the
+  single-user auth model.
+- **AD-16: Seed salary model.** Salary = the title's US base × the country's pay
+  multiplier × a log-normal jitter (σ 0.15, clamped to 0.6–1.6). It is converted to
+  local currency at the seeded FX rate and rounded to 100 major units (INR 1,000,
+  JPY 10,000). The history is 0–3 past raises of 3–12%, back-computed so that the
+  chain ends exactly at the current salary.
 
 ## AI Prompts Log
 
@@ -177,6 +196,7 @@ Each bullet is one verifiable unit and one commit.
 | 1 | 2026-10-26 | "You are a senior full-stack engineer… fill in all six context files (project overview, architecture, code standards, UI context, AI workflow rules, progress tracker) for an ACME salary manager; planning only, no app code; commit `docs: add project context and spec files`." | Reviewed against the brief. The AI raised these issues instead of silently picking an answer: the SQLite/Postgres provider split (Q1), the delete semantics (Q2), the 32-bit Int overflow risk for minor units (AD-1), and the absence of `percentile_cont` on SQLite, which led to a portable window-function median (AD-4). |
 | 2 | 2026-10-26 | "go ahead as suggest" (approve all recommendations, start work) | The AI adopted Postgres everywhere (AD-12) and simplified the median (AD-4 → `percentile_cont`) and search (AD-6 → `ILIKE`, dropping the `searchText` column), because the portability constraints no longer applied. Docker was not installed, so it used the running Homebrew Postgres 15 for dev and test. The docs were committed separately before Phase 1. |
 | 3 | 2026-10-26 | "start where you left off" (resume Phase 1) | Reviewed the generated scaffold rather than accepting it as-is:<br>• Prisma's `prisma7.config.ts` was renamed to `prisma.config.ts`, and the client output was moved out of `app/`.<br>• The unexpected `cn` dependency was verified as official before it was kept.<br>• A broken font variable (`--font-sans` referencing itself) was fixed.<br>• Token names that clashed with shadcn's `--accent-foreground` and `--ring` were renamed.<br>• The deprecated `vite-tsconfig-paths` plugin was removed.<br>• The user rejected AI co-author trailers on commits, so commits carry no AI attribution. |
+| 4 | 2026-10-26 | "yes" (start Phase 2), then "go ahead; start with something else, test it again after some time if it is blocking" | Every result was checked by running it, not by reading the code:<br>• Determinism was proven with an md5 of every row across two seed runs.<br>• Plausibility was checked with USD medians per country computed in SQL.<br>• The seed was timed at 4.4 s against its 10 s target.<br>• Bugs caught: a stale Prisma client after `migrate dev`, and a 30 s `npx` overhead in test setup.<br>• Long builds now run in the background while the docs are updated. |
 
 ## Session Notes
 
@@ -186,7 +206,10 @@ Each bullet is one verifiable unit and one commit.
 - 2026-10-26: The open questions are resolved. Local dev uses Homebrew Postgres 15 on
   `localhost:5432` (Docker is not installed on this machine). The databases are
   `acme_salary` (dev) and `acme_salary_test` (tests).
-- 2026-10-26: Phase 1 is done. Phase 2 adds an `integration` Vitest project (node
-  environment, `fileParallelism: false`, global setup running `prisma migrate deploy`
-  against `TEST_DATABASE_URL`), plus `TEST_DATABASE_URL` in `lib/env.ts` and a
-  `db:seed` script.
+- 2026-10-26: Phase 2 is done. Gotchas:
+  - Prisma 7's `migrate dev` no longer regenerates the client, so run
+    `npm run db:generate` after a schema change.
+  - `npx prisma` adds about 30 s on this machine (a registry lookup), so scripts call
+    `node_modules/.bin/prisma` or go through npm scripts.
+  - Run long commands (build, install) in the background so they don't block other
+    work.

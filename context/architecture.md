@@ -34,8 +34,13 @@
   share these schemas.
 - `lib/money/` — Pure helpers for minor-unit conversion, formatting, and FX
   conversion.
-- `prisma/` — `schema.prisma`, migrations, and `seed.ts`. Pure seed generators live
-  under `prisma/seed/`.
+- `prisma/` — `schema.prisma`, migrations, and `seed.ts` (the CLI entry). Under
+  `prisma/seed/`, `reference-data.ts` holds the static data, `generate.ts` is the
+  pure, deterministic dataset builder, and `write.ts` does a truncate and bulk insert
+  in one transaction, then resets the id sequences.
+- `lib/db/create-client.ts` — builds a Prisma client for a connection string, without
+  `server-only`. The seed and the tests use it. App code uses the `lib/db/client.ts`
+  singleton.
 - `tests/` — Test setup, DB helpers, and fixtures. Unit tests sit next to their source
   as `*.test.ts`. Integration tests live in `tests/integration/`.
 
@@ -116,7 +121,7 @@ erDiagram
     int newSalaryMinor
     string currency
     string reason "optional"
-    int changedById FK
+    int changedById FK "null = system (seed/import)"
     datetime changedAt
   }
   User {
@@ -129,6 +134,13 @@ erDiagram
 
 `ExchangeRate` is unique on `(version, currencyCode)` and has no FK to Country,
 because several countries can share a currency (EUR).
+
+Physical tables and columns are snake_case (`employees.salary_minor`, through Prisma
+`@@map`/`@map`), so raw SQL needs no quoted identifiers. The Prisma models keep
+camelCase. `SalaryHistory.changedById` is nullable, and null means a system change:
+the seeded initial salaries and history predate any user. Every change made through
+the app records the signed-in user. Every foreign key uses `ON DELETE RESTRICT`
+(Invariant 10: rows are never hard-deleted).
 
 **Indexes:** Employee has `(countryCode)`, `(departmentId)`, `(jobTitle)`,
 `(lastName, firstName)`, `(hireDate)` and `(terminatedAt)`. SalaryHistory has

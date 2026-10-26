@@ -15,6 +15,8 @@ cp .env.example .env          # set DATABASE_URL and TEST_DATABASE_URL
 createdb acme_salary
 createdb acme_salary_test
 npm install                   # also generates the Prisma client
+npm run db:migrate            # apply migrations to the dev database
+npm run db:seed               # 10,000 deterministic employees (~5s, replaces all data)
 npm run dev
 ```
 
@@ -30,3 +32,8 @@ npm run dev
 | `npm run format`     | Format with Prettier                          |
 | `npm run db:migrate` | Create or apply migrations in development     |
 | `npm run db:deploy`  | Apply migrations (CI / production)            |
+| `npm run db:seed`    | Replace all data with the deterministic seed  |
+| `npm run db:reset`   | Drop, re-migrate and re-seed the dev database |
+
+`npm run test` runs the unit, component and integration projects. The integration
+tests need `TEST_DATABASE_URL`, and the database name must end in `_test`.
