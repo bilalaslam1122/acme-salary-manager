@@ -4,12 +4,12 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 3, employee service and CRUD API: complete. Phase 4 is next.
+- Phase 4, employee directory list API: complete. Phase 5 is next.
 
 ## Current Goal
 
-- Phase 4: the list API with pagination, search, filters, sort and indexes, with
-  tests.
+- Phase 5: the insights service: aggregations, median and currency normalization,
+  with tests.
 
 ## Completed
 
@@ -36,6 +36,20 @@ Update this file after every meaningful implementation change.
       - 47 new tests: unit tests for validation and HTTP mapping, integration tests
         for the service and route handlers. A mutation check confirmed that removing
         the history write fails 2 tests.
+- [x] Phase 4:
+      - `GET /api/employees` returns `{ data, meta }` with page, pageSize (max 100),
+        total, totalPages and fxVersion.
+      - Search uses `ILIKE` over first name, last name, full name, email and code,
+        with wildcards escaped.
+      - Filters cover country, department, job title and `includeTerminated`.
+      - Sort by name, job title, hire date or USD salary, ascending or descending,
+        with an id tiebreak.
+      - A single raw-SQL path lives in `lib/db/employee-directory.ts`. The shared FX
+        SQL is in `lib/db/fx.ts`, ready for Phase 5.
+      - The Phase 2 indexes already cover the filters, so no new migration was
+        needed.
+      - 35 new tests, including a 10k-row performance test (3–32 ms against the
+        300 ms budget).
 
 ## In Progress
 
@@ -53,7 +67,7 @@ Each bullet is one verifiable unit and one commit.
       consistency, and one history row per employee).
 - [x] **Phase 3:** `feat:` Employee service, the CRUD API (`/api/employees`,
       `/api/employees/[id]`), Zod schemas, and the error mapping (+ tests).
-- [ ] **Phase 4:** `feat:` The list API with pagination, search, filters and sort,
+- [x] **Phase 4:** `feat:` The list API with pagination, search, filters and sort,
       plus indexes (+ tests, including a performance smoke test at 10k).
 - [ ] **Phase 5:** `feat:` The insights service and API: min, max, avg and median by
       group, headcount by country, histogram, and USD normalization (+ tests with
@@ -76,8 +90,11 @@ Each bullet is one verifiable unit and one commit.
 
 ## Open Questions
 
-Phase 3 added these, each implemented as the stated assumption. Each needs
-confirmation:
+- None open.
+
+Resolved:
+
+- Phase 3 assumptions 9–12 were confirmed by the user on 2026-10-26 ("sure"):
 
 9. **Employee code:** server-generated as `ACME-{id:05}`. HR cannot enter their
    existing codes from Excel. Changing this would be a small, additive change if
@@ -88,8 +105,6 @@ confirmation:
     planned hires. No other restriction is defined.
 12. **Salary change reason:** optional, and only allowed when the salary actually
     changes (otherwise 400).
-
-Resolved:
 
 - All of the original questions were resolved on 2026-10-26, when the user approved
   the recommendations:
@@ -234,6 +249,21 @@ Resolved:
   - Malformed JSON returns 400.
   The `{ fieldErrors }` shape is designed to drive the inline form errors in
   Phase 9.
+- **AD-21: The directory query is one parameterized raw-SQL path.** Sorting by USD
+  salary needs a join to the active FX version, which Prisma's query builder cannot
+  express. Using raw SQL for every sort keeps a single code path.
+  - ORDER BY expressions come from a whitelist map keyed by the validated enum, so
+    user input never reaches SQL text.
+  - Rows, count and FX version run as 3 parallel queries.
+  - USD = `ROUND(salary_minor × micros / (10^exp × 10⁴))` in cents, using `numeric`
+    to avoid int4 overflow. Results are `NULLS LAST` if a currency lacks a rate.
+  - Measured on 10k rows with EXPLAIN ANALYZE:
+    - The country filter plus name sort uses `employees_last_name_first_name_idx`
+      (about 1 ms).
+    - Search plus USD sort is a sequential scan plus top-N sort (about 15 ms).
+    - Both are far inside the budget. The `pg_trgm` upgrade path stays deferred.
+  *Alternative:* `findMany` for name, title and date sorts plus raw SQL for USD. That
+  means two code paths that must apply identical filters, which risks drift.
 
 ## AI Prompts Log
 
@@ -244,6 +274,7 @@ Resolved:
 | 3 | 2026-10-26 | "start where you left off" (resume Phase 1) | Reviewed the generated scaffold rather than accepting it as-is:<br>• Prisma's `prisma7.config.ts` was renamed to `prisma.config.ts`, and the client output was moved out of `app/`.<br>• The unexpected `cn` dependency was verified as official before it was kept.<br>• A broken font variable (`--font-sans` referencing itself) was fixed.<br>• Token names that clashed with shadcn's `--accent-foreground` and `--ring` were renamed.<br>• The deprecated `vite-tsconfig-paths` plugin was removed.<br>• The user rejected AI co-author trailers on commits, so commits carry no AI attribution. |
 | 4 | 2026-10-26 | "yes" (start Phase 2), then "go ahead; start with something else, test it again after some time if it is blocking" | Every result was checked by running it, not by reading the code:<br>• Determinism was proven with an md5 of every row across two seed runs.<br>• Plausibility was checked with USD medians per country computed in SQL.<br>• The seed was timed at 4.4 s against its 10 s target.<br>• Bugs caught: a stale Prisma client after `migrate dev`, and a 30 s `npx` overhead in test setup.<br>• Long builds now run in the background while the docs are updated. |
 | 5 | 2026-10-26 | "continue" (Phase 3) | The AI checked the Next 16 route handler docs (`RouteContext`, async `params`) before writing handlers. During design it found an audit gap (country moves change currency) and a concurrency race on "old salary", and fixed both (AD-17, AD-18). It moved the transactional history write from Phase 6 into Phase 3, to avoid shipping a known invariant violation. A mutation test confirmed the history tests fail when the write is removed. Product rules it had to assume are listed as Open Questions 9–12 instead of being decided silently. |
+| 6 | 2026-10-26 | "sure" (confirm assumptions 9–12, then Phase 4) | Before writing tests, the AI ran EXPLAIN ANALYZE against the 10k dev data to confirm index use and timings. It used hand-computed USD expectations (for example £50,000 × 1.27 = $63,500) to verify the conversion across GBP, USD, JPY (exponent 0) and INR. The performance test was run verbose to record the real timings, not just a pass. An SQL-injection-style `sort` value is covered by a test. |
 
 ## Session Notes
 

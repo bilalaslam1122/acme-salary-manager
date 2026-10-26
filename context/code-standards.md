@@ -58,6 +58,9 @@
 - Use a consistent response shape:
   - Success is `{ "data": T }`. Paginated success is
     `{ "data": T[], "meta": { "page", "pageSize", "total", "totalPages" } }`.
+    Endpoints that show USD figures add `fxVersion` to `meta`.
+  - Never interpolate user input into ORDER BY. Map a validated enum to a whitelisted
+    `Prisma.sql` fragment.
   - Error is `{ "error": { "code": string, "message": string, "details"?: unknown } }`.
 - Status codes are: `200` read/update, `201` create, `204` delete or terminate, `400`
   validation, `401` no session, `404` not found, `409` conflict (duplicate email or
