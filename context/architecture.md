@@ -9,11 +9,11 @@
 | Charts     | Recharts                                     | Insights bar charts and histogram                                     |
 | Validation | Zod                                          | Parse every external input (request bodies, query strings, env)      |
 | ORM        | Prisma                                       | Schema, migrations, typed queries; `$queryRaw` for aggregations      |
-| Database   | SQLite (local dev + tests), PostgreSQL (prod) | Relational storage for all data                                       |
+| Database   | PostgreSQL 15+ everywhere (dev, test, prod)  | Relational storage for all data; separate `_test` database for tests |
 | Auth       | bcryptjs + `jose` (signed JWT in HttpOnly cookie) | Single seeded HR Manager login, stateless session                 |
 | Seed data  | `@faker-js/faker` with a fixed seed          | Deterministic 10,000-employee dataset                                 |
 | Testing    | Vitest + React Testing Library               | Unit, service/integration (against test DB), component tests         |
-| Hosting    | Vercel + Neon Postgres (see Open Questions)  | Deployment target                                                     |
+| Hosting    | Vercel + Neon Postgres                       | Deployment target                                                     |
 
 ## System Boundaries
 
@@ -50,7 +50,7 @@ flowchart LR
   API --> Services
   Services --> Money["lib/money/*"]
   Services --> DB["lib/db/* (Prisma + raw SQL)"]
-  DB --> Store[("SQLite (dev/test) / Postgres (prod)")]
+  DB --> Store[("PostgreSQL")]
 ```
 
 ## Storage Model
@@ -92,7 +92,6 @@ erDiagram
     string firstName
     string lastName
     string email UK
-    string searchText "lowercased name+email+code"
     string jobTitle
     int departmentId FK
     string countryCode FK
@@ -166,8 +165,8 @@ because several countries can share a currency (EUR).
 6. An employee's `salaryCurrency` always equals the currency of their country.
 7. The seed is deterministic: a fixed PRNG seed and no `Date.now()`. The same seed
    produces identical rows.
-8. Raw SQL must run unchanged on both SQLite and Postgres. Use ANSI SQL and window
-   functions only. Do not use `ILIKE`, `percentile_cont` or vendor-specific functions.
+8. Postgres is the only supported database, in dev, test and prod. Tests run against a
+   real Postgres test database, never SQLite or mocks of Prisma for query behaviour.
 9. Every page and API except login requires a valid session.
 10. Terminated employees (where `terminatedAt` is set) are excluded from insights and
     hidden from the directory by default. They are never hard-deleted, so their

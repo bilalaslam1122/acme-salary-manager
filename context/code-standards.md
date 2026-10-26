@@ -72,8 +72,8 @@
   `BIGINT` before multiplying, to avoid int4 overflow on Postgres.
 - Every salary write goes through `lib/services/employees`, inside
   `prisma.$transaction`, together with its SalaryHistory row.
-- Raw SQL must be parameterised (Prisma tagged template or `Prisma.sql`) and portable
-  across SQLite and Postgres.
+- Raw SQL must be parameterised (Prisma tagged template or `Prisma.sql`). Never
+  interpolate strings into SQL.
 - Never add or remove indexes casually. Every index has a query that needs it, noted
   in the migration's commit message.
 - Schema changes are made only through `prisma migrate`. Never edit an applied
@@ -85,9 +85,11 @@
   skipped test.
 - Tests are fast and deterministic. They make no network calls, do not depend on wall
   clock time (inject or freeze time), and do not depend on run order.
-- Integration tests run against an isolated SQLite test DB (one file per Vitest
-  worker), created with `prisma migrate deploy` in global setup and truncated between
-  tests. Tests never touch the dev DB.
+- Integration tests run against an isolated Postgres test database
+  (`TEST_DATABASE_URL`, for example `acme_salary_test`). It is migrated with
+  `prisma migrate deploy` in global setup and truncated between tests. Integration test
+  files run sequentially (no file parallelism) so they never interfere. Tests never
+  touch the dev database.
 - Test one behaviour per test, with a readable name such as
   `it("writes a SalaryHistory row when salary changes")`.
 - Build test data with small factories in `tests/factories.ts`. Do not reuse the
