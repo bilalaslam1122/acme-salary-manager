@@ -112,7 +112,11 @@ describe("listSalaryHistory", () => {
 
   it("keeps history readable after termination", async () => {
     const employee = await createGbEmployee();
-    await terminateEmployee(employee.id, { now: t1 });
+    await terminateEmployee(
+      employee.id,
+      { reason: "Resigned" },
+      { actorId: null, now: t1 },
+    );
 
     expect((await listSalaryHistory(employee.id, firstPage)).data).toHaveLength(1);
   });

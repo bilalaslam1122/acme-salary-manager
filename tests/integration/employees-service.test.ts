@@ -4,6 +4,7 @@ import {
   createEmployee,
   getEmployee,
   getEmployeeDetail,
+  reinstateEmployee,
   terminateEmployee,
   updateEmployee,
 } from "@/lib/services/employees";
@@ -19,6 +20,15 @@ async function create(overrides: Record<string, unknown> = {}) {
     createEmployeeSchema.parse(await employeePayload(overrides)),
     system,
   );
+}
+
+const resigned = { reason: "Resigned" };
+
+function eventsFor(employeeId: number) {
+  return testPrisma.employeeEvent.findMany({
+    where: { employeeId },
+    orderBy: { id: "asc" },
+  });
 }
 
 function historyFor(employeeId: number) {
@@ -117,6 +127,44 @@ describe("updateEmployee", () => {
     expect(await historyFor(employee.id)).toHaveLength(1);
   });
 
+  it("records non-salary changes as one audit event with readable values", async () => {
+    const employee = await create({ jobTitle: "Software Engineer", countryCode: "GB" });
+
+    await updateEmployee(
+      employee.id,
+      { jobTitle: "Staff Engineer", countryCode: "DE", salaryMinor: 9_000_000 },
+      system,
+    );
+
+    const [event] = await eventsFor(employee.id);
+    expect(event).toMatchObject({ type: "UPDATED", changedById: null, changedAt: now });
+    expect(event!.changes).toEqual({
+      "Job title": { from: "Software Engineer", to: "Staff Engineer" },
+      Country: { from: "United Kingdom", to: "Germany" },
+    });
+  });
+
+  it("writes no audit event when only the salary changes", async () => {
+    const employee = await create({ salaryMinor: 8_000_000 });
+    await updateEmployee(employee.id, { salaryMinor: 8_500_000 }, system);
+    expect(await eventsFor(employee.id)).toEqual([]);
+  });
+
+  it("rolls back the field change if the audit event cannot be written", async () => {
+    const employee = await create({ jobTitle: "Software Engineer" });
+
+    await expect(
+      updateEmployee(
+        employee.id,
+        { jobTitle: "Staff Engineer" },
+        { actorId: 999_999, now },
+      ),
+    ).rejects.toThrow();
+
+    expect((await getEmployee(employee.id)).jobTitle).toBe("Software Engineer");
+    expect(await eventsFor(employee.id)).toEqual([]);
+  });
+
   it("does not write history when the salary is set to its current value", async () => {
     const employee = await create({ salaryMinor: 8_000_000 });
     await updateEmployee(employee.id, { salaryMinor: 8_000_000 }, system);
@@ -150,7 +198,7 @@ describe("updateEmployee", () => {
 
   it("rejects changes to a terminated employee", async () => {
     const employee = await create();
-    await terminateEmployee(employee.id, { now });
+    await terminateEmployee(employee.id, resigned, system);
     await expect(
       updateEmployee(employee.id, { jobTitle: "Staff Engineer" }, system),
     ).rejects.toThrow(ConflictError);
@@ -167,16 +215,66 @@ describe("terminateEmployee", () => {
   it("sets terminatedAt and keeps the employee and history", async () => {
     const employee = await create();
 
-    await terminateEmployee(employee.id, { now });
+    await terminateEmployee(employee.id, resigned, system);
 
     expect((await getEmployee(employee.id)).terminatedAt).toBe(now.toISOString());
     expect(await historyFor(employee.id)).toHaveLength(1);
   });
 
-  it("rejects terminating twice", async () => {
+  it("records who terminated the employee, when and why", async () => {
     const employee = await create();
-    await terminateEmployee(employee.id, { now });
-    await expect(terminateEmployee(employee.id, { now })).rejects.toThrow(ConflictError);
+
+    await terminateEmployee(employee.id, resigned, system);
+
+    expect(await eventsFor(employee.id)).toEqual([
+      expect.objectContaining({
+        type: "TERMINATED",
+        reason: "Resigned",
+        changedById: null,
+        changedAt: now,
+      }),
+    ]);
+  });
+
+  it("rejects terminating twice and writes no second event", async () => {
+    const employee = await create();
+    await terminateEmployee(employee.id, resigned, system);
+    await expect(terminateEmployee(employee.id, resigned, system)).rejects.toThrow(
+      ConflictError,
+    );
+    expect(await eventsFor(employee.id)).toHaveLength(1);
+  });
+});
+
+describe("reinstateEmployee", () => {
+  it("makes a terminated employee active and editable again, with an audit event", async () => {
+    const employee = await create();
+    await terminateEmployee(employee.id, resigned, system);
+
+    await reinstateEmployee(employee.id, { reason: "Terminated by mistake" }, system);
+
+    expect((await getEmployee(employee.id)).terminatedAt).toBeNull();
+    expect((await eventsFor(employee.id)).map((e) => e.type)).toEqual([
+      "TERMINATED",
+      "REINSTATED",
+    ]);
+    await expect(
+      updateEmployee(employee.id, { jobTitle: "Staff Engineer" }, system),
+    ).resolves.toMatchObject({ jobTitle: "Staff Engineer" });
+  });
+
+  it("rejects reinstating an active employee", async () => {
+    const employee = await create();
+    await expect(
+      reinstateEmployee(employee.id, { reason: "Oops" }, system),
+    ).rejects.toThrow(ConflictError);
+    expect(await eventsFor(employee.id)).toEqual([]);
+  });
+
+  it("throws NotFoundError for an unknown employee", async () => {
+    await expect(reinstateEmployee(999, { reason: "Oops" }, system)).rejects.toThrow(
+      NotFoundError,
+    );
   });
 });
 

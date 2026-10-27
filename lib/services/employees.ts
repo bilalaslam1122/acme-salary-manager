@@ -3,7 +3,12 @@ import { prisma } from "@/lib/db/client";
 import { queryActiveFx, queryEmployeeSalaryUsdCents, type ActiveFx } from "@/lib/db/fx";
 import { Prisma } from "@/lib/db/generated/prisma/client";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
-import type { CreateEmployeeInput, UpdateEmployeeInput } from "@/lib/validation/employee";
+import type {
+  CreateEmployeeInput,
+  EmploymentChangeInput,
+  UpdateEmployeeInput,
+} from "@/lib/validation/employee";
+import { diffEmployee } from "./employee-changes";
 
 type Tx = Prisma.TransactionClient;
 
@@ -162,6 +167,19 @@ export async function updateEmployee(
         include: employeeInclude,
       });
 
+      const changes = diffEmployee(toEmployeeDto(existing), toEmployeeDto(row));
+      if (Object.keys(changes).length > 0) {
+        await tx.employeeEvent.create({
+          data: {
+            employeeId: id,
+            type: "UPDATED",
+            changes,
+            changedById: actorId,
+            changedAt: now,
+          },
+        });
+      }
+
       if (salaryChanged) {
         await tx.salaryHistory.create({
           data: {
@@ -185,21 +203,58 @@ export async function updateEmployee(
 /** Soft-deletes an active employee; their history is kept (Invariant 10). */
 export async function terminateEmployee(
   id: number,
-  { now = new Date() }: Pick<ActorContext, "now"> = {},
+  { reason }: EmploymentChangeInput,
+  { actorId, now = new Date() }: ActorContext,
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
     await lockActiveEmployee(tx, id);
     await tx.employee.update({ where: { id }, data: { terminatedAt: now } });
+    await tx.employeeEvent.create({
+      data: {
+        employeeId: id,
+        type: "TERMINATED",
+        reason,
+        changedById: actorId,
+        changedAt: now,
+      },
+    });
   });
 }
 
-/** Row-locks the employee so concurrent salary edits record a correct old value. */
-async function lockActiveEmployee(tx: Tx, id: number) {
+/** Undoes a termination, e.g. one made by mistake or a rehire into the same record. */
+export async function reinstateEmployee(
+  id: number,
+  { reason }: EmploymentChangeInput,
+  { actorId, now = new Date() }: ActorContext,
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    const existing = await lockEmployee(tx, id);
+    if (!existing.terminatedAt) {
+      throw new ConflictError(`Employee ${id} is not terminated`);
+    }
+    await tx.employee.update({ where: { id }, data: { terminatedAt: null } });
+    await tx.employeeEvent.create({
+      data: {
+        employeeId: id,
+        type: "REINSTATED",
+        reason,
+        changedById: actorId,
+        changedAt: now,
+      },
+    });
+  });
+}
+
+/** Row-locks the employee so concurrent edits record a correct "before" state. */
+async function lockEmployee(tx: Tx, id: number): Promise<EmployeeRow> {
   const [locked] = await tx.$queryRaw<{ id: number }[]>`
     SELECT id FROM employees WHERE id = ${id} FOR UPDATE`;
   if (!locked) throw new NotFoundError(`Employee ${id} not found`);
+  return tx.employee.findUniqueOrThrow({ where: { id }, include: employeeInclude });
+}
 
-  const existing = await tx.employee.findUniqueOrThrow({ where: { id } });
+async function lockActiveEmployee(tx: Tx, id: number): Promise<EmployeeRow> {
+  const existing = await lockEmployee(tx, id);
   if (existing.terminatedAt) {
     throw new ConflictError(`Employee ${id} is terminated and cannot be changed`);
   }

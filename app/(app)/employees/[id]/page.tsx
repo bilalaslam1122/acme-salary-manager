@@ -4,14 +4,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Pagination } from "@/components/common/pagination";
+import { EmployeeEventsList } from "@/components/employees/employee-events-list";
 import { EmployeeSheet } from "@/components/employees/employee-sheet";
+import { EmploymentActionButton } from "@/components/employees/employment-action-button";
 import { SalaryHistoryTable } from "@/components/employees/salary-history-table";
-import { TerminateButton } from "@/components/employees/terminate-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NotFoundError } from "@/lib/errors";
 import { formatMoney, formatUsdCents } from "@/lib/money/format";
+import { listEmployeeEvents } from "@/lib/services/employee-events";
 import { getEmployeeDetail, type EmployeeDetail } from "@/lib/services/employees";
 import { getReferenceData } from "@/lib/services/reference";
 import { listSalaryHistory } from "@/lib/services/salary-history";
@@ -66,13 +68,17 @@ async function EmployeeDetailView({
     if (error instanceof NotFoundError) notFound();
     throw error;
   }
-  const [history, reference] = await Promise.all([
+  const [history, events, reference] = await Promise.all([
     listSalaryHistory(id, pagination),
+    listEmployeeEvents(id),
     getReferenceData(),
   ]);
   const { employee } = detail;
   const name = `${employee.firstName} ${employee.lastName}`;
   const terminated = employee.terminatedAt !== null;
+  const termination = terminated
+    ? events.find((e) => e.type === "TERMINATED")
+    : undefined;
 
   return (
     <>
@@ -88,14 +94,36 @@ async function EmployeeDetailView({
               {employee.email}
             </p>
           </div>
-          {!terminated && (
-            <div className="flex gap-2">
-              <EmployeeSheet reference={reference} employee={employee} />
-              <TerminateButton employeeId={employee.id} name={name} />
-            </div>
-          )}
+          <div className="flex gap-2">
+            {terminated ? (
+              <EmploymentActionButton
+                action="reinstate"
+                employeeId={employee.id}
+                name={name}
+              />
+            ) : (
+              <>
+                <EmployeeSheet reference={reference} employee={employee} />
+                <EmploymentActionButton
+                  action="terminate"
+                  employeeId={employee.id}
+                  name={name}
+                />
+              </>
+            )}
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
+          {terminated && (
+            <p
+              role="status"
+              className="rounded-md border bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
+            >
+              Terminated on {employee.terminatedAt!.slice(0, 10)}
+              {termination?.reason ? ` · ${termination.reason}` : ""}. This record is
+              read-only; reinstate the employee to edit it.
+            </p>
+          )}
           <dl className="grid grid-cols-2 gap-4 text-sm md:grid-cols-3 lg:grid-cols-6">
             <Detail label="Job title" value={employee.jobTitle} />
             <Detail label="Department" value={employee.department.name} />
@@ -135,6 +163,15 @@ async function EmployeeDetailView({
           itemLabel={{ singular: "change", plural: "changes" }}
           label="Salary history pages"
         />
+      </Card>
+
+      <Card className="gap-0 overflow-hidden rounded-lg py-0">
+        <CardHeader className="border-b py-4">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Activity
+          </CardTitle>
+        </CardHeader>
+        <EmployeeEventsList events={events} />
       </Card>
     </>
   );

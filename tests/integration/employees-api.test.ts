@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { DELETE, GET, PATCH } from "@/app/api/employees/[id]/route";
+import { GET as getEvents } from "@/app/api/employees/[id]/events/route";
+import { POST as reinstate } from "@/app/api/employees/[id]/reinstate/route";
+import { GET, PATCH } from "@/app/api/employees/[id]/route";
+import { POST as terminate } from "@/app/api/employees/[id]/terminate/route";
 import { POST } from "@/app/api/employees/route";
 import { authed, signIn } from "./auth";
 import { employeePayload, seedReferenceData } from "./factories";
@@ -101,23 +104,68 @@ describe("PATCH /api/employees/[id]", () => {
   });
 });
 
-describe("DELETE /api/employees/[id]", () => {
-  it("returns 204 and marks the employee terminated", async () => {
+describe("POST /api/employees/[id]/terminate and /reinstate", () => {
+  const resigned = { reason: "Resigned" };
+
+  it("terminates with a reason, then reinstates", async () => {
     const { id } = await createViaApi();
 
-    const response = await DELETE(request("DELETE"), ctx(id));
+    const terminated = await terminate(request("POST", resigned), ctx(id));
+    expect(terminated.status).toBe(204);
+    expect(
+      (await (await GET(request("GET"), ctx(id))).json()).data.terminatedAt,
+    ).not.toBeNull();
 
-    expect(response.status).toBe(204);
-    const after = await (await GET(request("GET"), ctx(id))).json();
-    expect(after.data.terminatedAt).not.toBeNull();
+    const reinstated = await reinstate(request("POST", { reason: "Mistake" }), ctx(id));
+    expect(reinstated.status).toBe(204);
+    expect(
+      (await (await GET(request("GET"), ctx(id))).json()).data.terminatedAt,
+    ).toBeNull();
+  });
+
+  it("returns 400 without a reason", async () => {
+    const { id } = await createViaApi();
+
+    const response = await terminate(request("POST", { reason: "  " }), ctx(id));
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.details.fieldErrors).toHaveProperty("reason");
   });
 
   it("returns 409 when the employee is already terminated", async () => {
     const { id } = await createViaApi();
-    await DELETE(request("DELETE"), ctx(id));
+    await terminate(request("POST", resigned), ctx(id));
 
-    const response = await DELETE(request("DELETE"), ctx(id));
+    const response = await terminate(request("POST", resigned), ctx(id));
 
     expect(response.status).toBe(409);
+  });
+
+  it("returns 409 when reinstating an active employee", async () => {
+    const { id } = await createViaApi();
+
+    const response = await reinstate(request("POST", { reason: "Mistake" }), ctx(id));
+
+    expect(response.status).toBe(409);
+  });
+
+  it("lists the audit events newest first, attributed to the signed-in user", async () => {
+    const { id } = await createViaApi();
+    await PATCH(request("PATCH", { jobTitle: "Staff Engineer" }), ctx(id));
+    await terminate(request("POST", resigned), ctx(id));
+
+    const response = await getEvents(request("GET"), ctx(id));
+
+    expect(response.status).toBe(200);
+    const { data } = await response.json();
+    expect(data.map((e: { type: string }) => e.type)).toEqual(["TERMINATED", "UPDATED"]);
+    expect(data[0]).toMatchObject({ reason: "Resigned", changedBy: { name: "Test HR" } });
+    expect(data[1].changes).toEqual({
+      "Job title": { from: "Software Engineer", to: "Staff Engineer" },
+    });
+  });
+
+  it("returns 404 for the events of an unknown employee", async () => {
+    expect((await getEvents(request("GET"), ctx(99_999))).status).toBe(404);
   });
 });

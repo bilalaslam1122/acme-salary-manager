@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { POST as login } from "@/app/api/auth/login/route";
 import { POST as logout } from "@/app/api/auth/logout/route";
 import { GET as getHistory } from "@/app/api/employees/[id]/history/route";
+import { GET as getEvents } from "@/app/api/employees/[id]/events/route";
+import { POST as reinstateEmployee } from "@/app/api/employees/[id]/reinstate/route";
 import {
-  DELETE as deleteEmployee,
   GET as getEmployee,
   PATCH as patchEmployee,
 } from "@/app/api/employees/[id]/route";
+import { POST as terminateEmployee } from "@/app/api/employees/[id]/terminate/route";
 import { GET as listEmployees, POST as createEmployee } from "@/app/api/employees/route";
 import { GET as getByGroup } from "@/app/api/insights/by-group/route";
 import { GET as getDistribution } from "@/app/api/insights/distribution/route";
@@ -124,7 +126,7 @@ describe("protected API routes (Invariant 9)", () => {
     new Request("http://localhost/api/x", {
       method,
       headers: { "content-type": "application/json" },
-      body: method === "GET" || method === "DELETE" ? undefined : "{}",
+      body: method === "GET" ? undefined : "{}",
     });
 
   const routes: [string, () => Promise<Response>][] = [
@@ -132,7 +134,15 @@ describe("protected API routes (Invariant 9)", () => {
     ["POST /api/employees", () => createEmployee(anonymous("POST"))],
     ["GET /api/employees/[id]", () => getEmployee(anonymous(), ctx)],
     ["PATCH /api/employees/[id]", () => patchEmployee(anonymous("PATCH"), ctx)],
-    ["DELETE /api/employees/[id]", () => deleteEmployee(anonymous("DELETE"), ctx)],
+    [
+      "POST /api/employees/[id]/terminate",
+      () => terminateEmployee(anonymous("POST"), ctx),
+    ],
+    [
+      "POST /api/employees/[id]/reinstate",
+      () => reinstateEmployee(anonymous("POST"), ctx),
+    ],
+    ["GET /api/employees/[id]/events", () => getEvents(anonymous(), ctx)],
     ["GET /api/employees/[id]/history", () => getHistory(anonymous(), ctx)],
     ["GET /api/insights/summary", () => getSummary(anonymous())],
     ["GET /api/insights/by-group", () => getByGroup(anonymous())],

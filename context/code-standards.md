@@ -99,8 +99,9 @@
 - Route handlers are wrapped in `handle()`. They read input with `readJson()` and
   `parseInput(schema, …)`, and return `json(data, status)` or `noContent()`. Route
   params are typed with the global `RouteContext<"/api/…">`.
-- `DELETE /api/employees/[id]` terminates the employee (a soft delete) and returns
-  204.
+- `POST /api/employees/[id]/terminate` and `POST /api/employees/[id]/reinstate` take
+  `{ reason }` and return 204. They are explicit actions rather than `DELETE`,
+  because nothing is deleted and both need a body.
 - Services take an `ActorContext` (`actorId`, plus an optional `now` for
   deterministic tests) for any write that is audited.
 - `GET /api/employees/[id]/history` is paginated and newest first. Paginated

@@ -84,6 +84,8 @@ erDiagram
   Department ||--o{ Employee : contains
   Employee ||--o{ SalaryHistory : "has changes"
   User ||--o{ SalaryHistory : "made change"
+  Employee ||--o{ EmployeeEvent : "has events"
+  User ||--o{ EmployeeEvent : "made change"
 
   Country {
     string code PK "ISO-3166 alpha-2"
@@ -129,6 +131,15 @@ erDiagram
     int changedById FK "null = system (seed/import)"
     datetime changedAt
   }
+  EmployeeEvent {
+    int id PK
+    int employeeId FK
+    enum type "UPDATED | TERMINATED | REINSTATED"
+    json changes "UPDATED only: field -> from/to display values"
+    string reason "required for terminate/reinstate"
+    int changedById FK "null = system (seed/import)"
+    datetime changedAt
+  }
   User {
     int id PK
     string email UK
@@ -136,6 +147,12 @@ erDiagram
     string name
   }
 ```
+
+`EmployeeEvent` is the audit trail for everything except salary: field edits
+(job title, department, country, name, email, hire date), terminations and
+reinstatements. Field changes store display values (department and country names)
+rather than ids, so the trail still reads correctly after a rename. Salary stays in
+`SalaryHistory`, so a salary edit never writes both.
 
 `ExchangeRate` is unique on `(version, currencyCode)` and has no FK to Country,
 because several countries can share a currency (EUR).
@@ -202,5 +219,8 @@ the app records the signed-in user. Every foreign key uses `ON DELETE RESTRICT`
    real Postgres test database, never SQLite or mocks of Prisma for query behaviour.
 9. Every page and API except login requires a valid session.
 10. Terminated employees (where `terminatedAt` is set) are excluded from insights and
-    hidden from the directory by default. They are never hard-deleted, so their
-    history is kept.
+    listed in the directory only under the Terminated or All status. They are never
+    hard-deleted, so their history is kept, and they can be reinstated.
+11. Every non-salary change, termination and reinstatement writes an EmployeeEvent
+    row in the same transaction, with the signed-in user. Terminate and reinstate
+    require a reason.

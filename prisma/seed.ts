@@ -16,8 +16,9 @@ async function main(): Promise<void> {
     await writeDataset(prisma, dataset);
     const user = await upsertAdminUser(prisma, admin);
     const seconds = ((performance.now() - started) / 1000).toFixed(1);
+    const active = dataset.employees.filter((e) => e.terminatedAt === null).length;
     console.log(
-      `Seeded ${dataset.employees.length} employees and ${dataset.salaryHistory.length} salary history rows in ${seconds}s`,
+      `Seeded ${active} active and ${dataset.employees.length - active} former employees, ${dataset.salaryHistory.length} salary history rows in ${seconds}s`,
     );
     console.log(`HR Manager login: ${user.email}`);
   } finally {

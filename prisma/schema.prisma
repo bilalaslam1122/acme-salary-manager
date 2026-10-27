@@ -46,6 +46,7 @@ model Employee {
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
   salaryHistory  SalaryHistory[]
+  events         EmployeeEvent[]
 
   @@index([countryCode])
   @@index([departmentId])
@@ -85,12 +86,38 @@ model SalaryHistory {
   @@map("salary_history")
 }
 
+enum EmployeeEventType {
+  UPDATED
+  TERMINATED
+  REINSTATED
+
+  @@map("employee_event_type")
+}
+
+/// Audit trail for everything except salary, which SalaryHistory records.
+model EmployeeEvent {
+  id          Int               @id @default(autoincrement())
+  employeeId  Int               @map("employee_id")
+  employee    Employee          @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  type        EmployeeEventType
+  /// UPDATED only: { field: { from, to } } with display values (names, not ids).
+  changes     Json?
+  reason      String?
+  changedById Int?              @map("changed_by_id") // null = system (seed/import)
+  changedBy   User?             @relation(fields: [changedById], references: [id], onDelete: Restrict)
+  changedAt   DateTime          @map("changed_at")
+
+  @@index([employeeId, changedAt])
+  @@map("employee_events")
+}
+
 model User {
-  id            Int             @id @default(autoincrement())
-  email         String          @unique
-  passwordHash  String          @map("password_hash")
-  name          String
-  salaryChanges SalaryHistory[]
+  id             Int             @id @default(autoincrement())
+  email          String          @unique
+  passwordHash   String          @map("password_hash")
+  name           String
+  salaryChanges  SalaryHistory[]
+  employeeEvents EmployeeEvent[]
 
   @@map("users")
 }

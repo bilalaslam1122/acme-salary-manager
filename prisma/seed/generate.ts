@@ -21,6 +21,7 @@ const MAX_PAST_RAISES = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** A former employee stayed at least this long before leaving. */
 const MIN_TENURE_DAYS = 30;
+const TERMINATION_REASONS = ["Resigned", "Retired", "Contract ended", "Redundancy"];
 
 export interface Dataset {
   countries: Prisma.CountryCreateManyInput[];
@@ -28,6 +29,7 @@ export interface Dataset {
   exchangeRates: Prisma.ExchangeRateCreateManyInput[];
   employees: Prisma.EmployeeCreateManyInput[];
   salaryHistory: Prisma.SalaryHistoryCreateManyInput[];
+  employeeEvents: Prisma.EmployeeEventCreateManyInput[];
 }
 
 export interface GenerateOptions {
@@ -65,6 +67,7 @@ export function generateDataset(options: GenerateOptions = {}): Dataset {
 
   const employees: Prisma.EmployeeCreateManyInput[] = [];
   const salaryHistory: Prisma.SalaryHistoryCreateManyInput[] = [];
+  const employeeEvents: Prisma.EmployeeEventCreateManyInput[] = [];
 
   // Active employees come first so their ids and data do not depend on attrition.
   for (let id = 1; id <= employeeCount + formerEmployeeCount; id++) {
@@ -121,6 +124,17 @@ export function generateDataset(options: GenerateOptions = {}): Dataset {
         ...change,
       });
     }
+
+    if (terminatedAt) {
+      employeeEvents.push({
+        id: employeeEvents.length + 1,
+        employeeId: id,
+        type: "TERMINATED",
+        reason: faker.helpers.arrayElement(TERMINATION_REASONS),
+        changedById: null,
+        changedAt: terminatedAt,
+      });
+    }
   }
 
   return {
@@ -142,6 +156,7 @@ export function generateDataset(options: GenerateOptions = {}): Dataset {
     ),
     employees,
     salaryHistory,
+    employeeEvents,
   };
 }
 

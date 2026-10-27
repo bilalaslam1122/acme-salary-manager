@@ -4,10 +4,16 @@ import type { Dataset } from "./generate";
 const BATCH_SIZE = 1_000;
 
 // Tables with explicit seeded ids whose serial sequences must be advanced afterwards.
-const SERIAL_TABLES = ["departments", "exchange_rates", "employees", "salary_history"];
+const SERIAL_TABLES = [
+  "departments",
+  "exchange_rates",
+  "employees",
+  "salary_history",
+  "employee_events",
+];
 
 const TRUNCATE_ALL =
-  "TRUNCATE salary_history, employees, exchange_rates, departments, countries, users RESTART IDENTITY CASCADE";
+  "TRUNCATE employee_events, salary_history, employees, exchange_rates, departments, countries, users RESTART IDENTITY CASCADE";
 
 type Executor = Pick<PrismaClient, "$executeRawUnsafe">;
 
@@ -36,6 +42,9 @@ export async function writeDataset(
       }
       for (const batch of chunk(dataset.salaryHistory, BATCH_SIZE)) {
         await tx.salaryHistory.createMany({ data: batch });
+      }
+      for (const batch of chunk(dataset.employeeEvents, BATCH_SIZE)) {
+        await tx.employeeEvent.createMany({ data: batch });
       }
 
       for (const table of SERIAL_TABLES) {

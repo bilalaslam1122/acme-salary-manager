@@ -22,8 +22,13 @@ one-page [project overview](context/project-overview.md).
   - Validation shows inline on each field. Salaries are entered in normal units
     and stored exactly in minor units.
   - The currency follows the country.
-  - Termination is a soft delete behind a confirmation. Terminated employees are
-    read-only.
+  - Termination is a soft delete behind a confirmation that asks for a reason.
+    Terminated employees are read-only and can be reinstated.
+  - The directory has an Active / Terminated / All status filter. The terminated
+    view lists the most recent leavers first, with the date they left.
+- **Activity trail** for each employee: every field change (job title, department,
+  country and so on) with before and after values, plus terminations and
+  reinstatements with their reasons, all attributed to the user who made them.
 - **Salary history** for each employee: old and new values, % change, currency
   moves, the reason, and who made the change. History is written in the same
   database transaction as the change itself.

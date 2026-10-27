@@ -50,5 +50,11 @@ export const updateEmployeeSchema = createEmployeeSchema
     path: ["salaryMinor"],
   });
 
+/** Body for terminate and reinstate: the reason is the point of the audit row. */
+export const employmentChangeSchema = z.strictObject({
+  reason: z.string().trim().min(1, "Give a reason").max(500),
+});
+
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
+export type EmploymentChangeInput = z.infer<typeof employmentChangeSchema>;
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
