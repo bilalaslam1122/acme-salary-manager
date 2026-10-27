@@ -41,7 +41,7 @@ Update this file after every meaningful implementation change.
         total, totalPages and fxVersion.
       - Search uses `ILIKE` over first name, last name, full name, email and code,
         with wildcards escaped.
-      - Filters cover country, department, job title and `includeTerminated`.
+      - Filters cover country, department, job title and employment status (active, terminated or all).
       - Sort by name, job title, hire date or USD salary, ascending or descending,
         with an id tiebreak.
       - A single raw-SQL path lives in `lib/db/employee-directory.ts`. The shared FX

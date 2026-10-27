@@ -2,6 +2,7 @@ import {
   employeeListQuerySchema,
   type EmployeeListQuery,
   type EmployeeSortField,
+  type EmployeeStatus,
 } from "./employee-list";
 
 const DEFAULTS = employeeListQuerySchema.parse({});
@@ -51,5 +52,25 @@ export function sortHref(query: EmployeeListQuery, field: EmployeeSortField): st
 
 /** True when the view is narrowed by search or a filter (not just sort/paging). */
 export function hasDirectoryFilters(query: EmployeeListQuery): boolean {
-  return Boolean(query.q || query.countryCode || query.departmentId || query.jobTitle);
+  return Boolean(
+    query.q ||
+    query.countryCode ||
+    query.departmentId ||
+    query.jobTitle ||
+    query.status !== DEFAULTS.status,
+  );
+}
+
+/**
+ * Switching the status view. Terminated employees are most useful newest-leaver
+ * first; the "left on" sort means nothing for active employees, so it is dropped.
+ */
+export function statusHref(query: EmployeeListQuery, status: EmployeeStatus): string {
+  const sortOverrides: Partial<EmployeeListQuery> =
+    status === "terminated"
+      ? { sort: "terminatedAt", order: "desc" }
+      : query.sort === "terminatedAt" && status === "active"
+        ? { sort: DEFAULTS.sort, order: DEFAULTS.order }
+        : {};
+  return directoryHref(query, { status, ...sortOverrides, page: 1 });
 }

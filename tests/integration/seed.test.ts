@@ -20,7 +20,8 @@ describe("writeDataset", () => {
     expect(await testPrisma.country.count()).toBe(dataset.countries.length);
     expect(await testPrisma.department.count()).toBe(dataset.departments.length);
     expect(await testPrisma.exchangeRate.count()).toBe(dataset.exchangeRates.length);
-    expect(await testPrisma.employee.count()).toBe(25);
+    expect(await testPrisma.employee.count()).toBe(dataset.employees.length);
+    expect(await testPrisma.employee.count({ where: { terminatedAt: null } })).toBe(25);
     expect(await testPrisma.salaryHistory.count()).toBe(dataset.salaryHistory.length);
   });
 
@@ -28,7 +29,7 @@ describe("writeDataset", () => {
     await writeDataset(testPrisma, dataset);
     await writeDataset(testPrisma, dataset);
 
-    expect(await testPrisma.employee.count()).toBe(25);
+    expect(await testPrisma.employee.count()).toBe(dataset.employees.length);
     expect(await testPrisma.salaryHistory.count()).toBe(dataset.salaryHistory.length);
   });
 

@@ -143,6 +143,7 @@ describe("insights SQL against an independent JS calculation", () => {
   it("matches headcount, min, max, avg and median per country on generated data", async () => {
     const dataset = generateDataset({ seed: 7, employeeCount: 300 });
     await writeDataset(testPrisma, dataset);
+    const active = dataset.employees.filter((e) => e.terminatedAt === null);
     const exponentByCurrency = new Map(
       COUNTRIES.map((c) => [c.currencyCode, c.currencyExponent]),
     );
@@ -152,7 +153,7 @@ describe("insights SQL against an independent JS calculation", () => {
           (10 ** exponentByCurrency.get(currency)! * 10_000),
       );
 
-    const expected = [...Map.groupBy(dataset.employees, (e) => e.countryCode)].map(
+    const expected = [...Map.groupBy(active, (e) => e.countryCode)].map(
       ([country, employees]) => {
         const values = employees
           .map((e) => usdCents(e.salaryMinor, e.salaryCurrency))

@@ -6,12 +6,21 @@ import { useEffect, useState, useTransition } from "react";
 import { FilterSelect } from "@/components/common/filter-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import type { ReferenceData } from "@/lib/services/reference";
-import { directoryHref } from "@/lib/validation/directory-url";
-import type { EmployeeListQuery } from "@/lib/validation/employee-list";
+import { directoryHref, statusHref } from "@/lib/validation/directory-url";
+import {
+  EMPLOYEE_STATUSES,
+  type EmployeeListQuery,
+  type EmployeeStatus,
+} from "@/lib/validation/employee-list";
 
 export const SEARCH_DEBOUNCE_MS = 300;
+
+const STATUS_LABEL: Record<EmployeeStatus, string> = {
+  active: "Active",
+  terminated: "Terminated",
+  all: "All",
+};
 
 interface DirectoryToolbarProps {
   query: EmployeeListQuery;
@@ -95,15 +104,29 @@ export function DirectoryToolbar({ query, reference }: DirectoryToolbarProps) {
         options={reference.jobTitles.map((t) => ({ value: t, label: t }))}
       />
 
-      <div className="flex h-9 items-center gap-2">
-        <Switch
-          id="filter-terminated"
-          checked={query.includeTerminated}
-          onCheckedChange={(checked) => navigate({ includeTerminated: checked })}
-        />
-        <Label htmlFor="filter-terminated" className="text-sm font-normal">
-          Show terminated
-        </Label>
+      <div className="flex flex-col gap-1">
+        <span id="filter-status-label" className="text-xs text-muted-foreground">
+          Status
+        </span>
+        <div
+          role="group"
+          aria-labelledby="filter-status-label"
+          className="inline-flex h-9 items-center rounded-md border bg-muted/40 p-0.5"
+        >
+          {EMPLOYEE_STATUSES.map((status) => (
+            <button
+              key={status}
+              type="button"
+              aria-pressed={query.status === status}
+              onClick={() =>
+                startTransition(() => router.push(statusHref(query, status)))
+              }
+              className="h-full rounded-[5px] px-3 text-sm text-muted-foreground transition-colors hover:text-foreground aria-pressed:bg-background aria-pressed:font-medium aria-pressed:text-foreground aria-pressed:shadow-xs"
+            >
+              {STATUS_LABEL[status]}
+            </button>
+          ))}
+        </div>
       </div>
 
       {isPending && (

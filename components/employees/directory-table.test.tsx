@@ -31,15 +31,25 @@ describe("DirectoryTable", () => {
     expect(within(row).getByText("ACME-00001")).toBeInTheDocument();
   });
 
-  it("marks terminated employees", () => {
+  it("marks terminated employees and shows when they left in the all view", () => {
     render(
       <DirectoryTable
-        rows={[{ ...employee, terminatedAt: "2026-01-01T00:00:00.000Z" }]}
-        query={parseDirectoryQuery({ includeTerminated: "true" })}
+        rows={[{ ...employee, terminatedAt: "2026-01-15T00:00:00.000Z" }]}
+        query={parseDirectoryQuery({ status: "all" })}
         total={1}
       />,
     );
-    expect(screen.getByText("Terminated")).toBeInTheDocument();
+    const row = screen.getByRole("row", { name: /Sato, Kenji/ });
+    expect(within(row).getByText("Terminated")).toBeInTheDocument();
+    expect(within(row).getByText("2026-01-15")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: /Left on/ })).toBeInTheDocument();
+  });
+
+  it("hides the 'left on' column for active employees", () => {
+    render(
+      <DirectoryTable rows={[employee]} query={parseDirectoryQuery({})} total={1} />,
+    );
+    expect(screen.queryByRole("columnheader", { name: /Left on/ })).toBeNull();
   });
 
   it("exposes the active sort to assistive tech and links to the reversed sort", () => {

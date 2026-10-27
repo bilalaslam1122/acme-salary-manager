@@ -40,6 +40,7 @@ const ORDER_BY: Record<EmployeeSortField, Prisma.Sql> = {
   jobTitle: Prisma.sql`e.job_title`,
   hireDate: Prisma.sql`e.hire_date`,
   salaryUsd: Prisma.sql`salary_usd_cents`,
+  terminatedAt: Prisma.sql`e.terminated_at`,
 };
 
 /** One page of the employee directory plus the total match count (AD-5, AD-6). */
@@ -79,8 +80,10 @@ export async function queryEmployeeDirectory(
 function whereClause(query: EmployeeListQuery): Prisma.Sql {
   const conditions = employeeFilterConditions(query);
 
-  if (!query.includeTerminated) {
+  if (query.status === "active") {
     conditions.push(Prisma.sql`e.terminated_at IS NULL`);
+  } else if (query.status === "terminated") {
+    conditions.push(Prisma.sql`e.terminated_at IS NOT NULL`);
   }
   if (query.q) {
     const pattern = `%${escapeLike(query.q)}%`;

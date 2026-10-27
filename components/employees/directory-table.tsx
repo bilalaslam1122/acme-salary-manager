@@ -34,6 +34,7 @@ export function DirectoryTable({ rows, query, total }: DirectoryTableProps) {
   if (rows.length === 0) {
     return <DirectoryEmptyState query={query} total={total} />;
   }
+  const showLeftOn = query.status !== "active";
 
   return (
     <Table>
@@ -52,6 +53,9 @@ export function DirectoryTable({ rows, query, total }: DirectoryTableProps) {
             align="right"
           />
           <SortableHead query={query} field="hireDate" label="Hire date" />
+          {showLeftOn && (
+            <SortableHead query={query} field="terminatedAt" label="Left on" />
+          )}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -65,7 +69,9 @@ export function DirectoryTable({ rows, query, total }: DirectoryTableProps) {
                 >
                   {employee.lastName}, {employee.firstName}
                 </Link>
-                {employee.terminatedAt && <Badge variant="secondary">Terminated</Badge>}
+                {employee.terminatedAt && query.status !== "terminated" && (
+                  <Badge variant="secondary">Terminated</Badge>
+                )}
               </div>
               <div className="text-xs text-muted-foreground">{employee.email}</div>
             </TableCell>
@@ -89,6 +95,11 @@ export function DirectoryTable({ rows, query, total }: DirectoryTableProps) {
                 : formatUsdCents(employee.salaryUsdCents)}
             </TableCell>
             <TableCell className="tabular-nums">{employee.hireDate}</TableCell>
+            {showLeftOn && (
+              <TableCell className="tabular-nums">
+                {employee.terminatedAt?.slice(0, 10) ?? "—"}
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>

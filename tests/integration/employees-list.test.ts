@@ -125,8 +125,14 @@ describe("listEmployees filters", () => {
     expect(lastNames(await list())).not.toContain("Gone");
   });
 
-  it("includes terminated employees when asked", async () => {
-    expect(lastNames(await list({ includeTerminated: "true" }))).toContain("Gone");
+  it("lists only terminated employees in the terminated view", async () => {
+    expect(lastNames(await list({ status: "terminated" }))).toEqual(["Gone"]);
+  });
+
+  it("lists active and terminated employees together in the all view", async () => {
+    const all = lastNames(await list({ status: "all" }));
+    expect(all).toContain("Gone");
+    expect(all).toHaveLength(4);
   });
 });
 

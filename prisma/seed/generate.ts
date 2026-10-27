@@ -14,9 +14,13 @@ import {
 
 export const DEFAULT_SEED = 42;
 export const DEFAULT_EMPLOYEE_COUNT = 10_000;
+/** Former employees seeded on top of the active ones (≈ 4% annual attrition). */
+export const ATTRITION_RATE = 0.04;
 
 const MAX_PAST_RAISES = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** A former employee stayed at least this long before leaving. */
+const MIN_TENURE_DAYS = 30;
 
 export interface Dataset {
   countries: Prisma.CountryCreateManyInput[];
@@ -28,7 +32,10 @@ export interface Dataset {
 
 export interface GenerateOptions {
   seed?: number;
+  /** Active employees. */
   employeeCount?: number;
+  /** Terminated employees, added after the active ones. Defaults to the attrition rate. */
+  formerEmployeeCount?: number;
 }
 
 /**
@@ -38,6 +45,8 @@ export interface GenerateOptions {
 export function generateDataset(options: GenerateOptions = {}): Dataset {
   const seed = options.seed ?? DEFAULT_SEED;
   const employeeCount = options.employeeCount ?? DEFAULT_EMPLOYEE_COUNT;
+  const formerEmployeeCount =
+    options.formerEmployeeCount ?? Math.round(employeeCount * ATTRITION_RATE);
 
   const faker = new Faker({ locale: [en] });
   faker.seed(seed);
@@ -57,14 +66,29 @@ export function generateDataset(options: GenerateOptions = {}): Dataset {
   const employees: Prisma.EmployeeCreateManyInput[] = [];
   const salaryHistory: Prisma.SalaryHistoryCreateManyInput[] = [];
 
-  for (let id = 1; id <= employeeCount; id++) {
+  // Active employees come first so their ids and data do not depend on attrition.
+  for (let id = 1; id <= employeeCount + formerEmployeeCount; id++) {
+    const isFormer = id > employeeCount;
     const country = faker.helpers.weightedArrayElement(countryChoices);
     const job = faker.helpers.weightedArrayElement(titleChoices);
     const firstName = faker.person.firstName();
     const lastName = faker.person.lastName();
+    const lastHireDate = isFormer
+      ? new Date(REFERENCE_DATE.getTime() - MIN_TENURE_DAYS * DAY_MS)
+      : REFERENCE_DATE;
     const hireDate = toUtcDate(
-      faker.date.between({ from: EARLIEST_HIRE_DATE, to: REFERENCE_DATE }),
+      faker.date.between({ from: EARLIEST_HIRE_DATE, to: lastHireDate }),
     );
+    const terminatedAt = isFormer
+      ? toUtcDate(
+          faker.date.between({
+            from: new Date(hireDate.getTime() + MIN_TENURE_DAYS * DAY_MS),
+            to: REFERENCE_DATE,
+          }),
+        )
+      : null;
+    // A former employee's raises stop when they leave.
+    const lastDay = terminatedAt ?? REFERENCE_DATE;
 
     const usd = job.baseUsd * country.payMultiplier * logNormalJitter(faker);
     const salaryMinor = usdToRoundedMinor(usd, country);
@@ -81,12 +105,12 @@ export function generateDataset(options: GenerateOptions = {}): Dataset {
       salaryMinor,
       salaryCurrency: country.currencyCode,
       hireDate,
-      terminatedAt: null,
+      terminatedAt,
       createdAt: REFERENCE_DATE,
       updatedAt: REFERENCE_DATE,
     });
 
-    for (const change of salaryChanges(faker, salaryMinor, hireDate, country)) {
+    for (const change of salaryChanges(faker, salaryMinor, hireDate, lastDay, country)) {
       salaryHistory.push({
         id: salaryHistory.length + 1,
         employeeId: id,
@@ -129,17 +153,18 @@ interface SalaryChange {
 }
 
 /**
- * The initial salary at hire, then 0–3 annual-ish raises ending exactly at the
- * current salary, so every employee's history chain is consistent.
+ * The initial salary at hire, then 0–3 annual-ish raises before `lastDay` ending
+ * exactly at the current salary, so every employee's history chain is consistent.
  */
 function salaryChanges(
   faker: Faker,
   currentMinor: number,
   hireDate: Date,
+  lastDay: Date,
   country: CountrySeed,
 ): SalaryChange[] {
   const yearsEmployed = Math.floor(
-    (REFERENCE_DATE.getTime() - hireDate.getTime()) / (365 * DAY_MS),
+    (lastDay.getTime() - hireDate.getTime()) / (365 * DAY_MS),
   );
   const raiseCount = faker.number.int({
     min: 0,
@@ -162,7 +187,7 @@ function salaryChanges(
     },
   ];
 
-  const spanMs = REFERENCE_DATE.getTime() - hireDate.getTime();
+  const spanMs = lastDay.getTime() - hireDate.getTime();
   raisePercents.forEach((pct, index) => {
     const isLast = index === raisePercents.length - 1;
     const next = isLast ? currentMinor : roundToUnit(salary * (1 + pct), roundUnit);

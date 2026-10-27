@@ -9,8 +9,13 @@ export const EMPLOYEE_SORT_FIELDS = [
   "jobTitle",
   "hireDate",
   "salaryUsd",
+  "terminatedAt",
 ] as const;
 export type EmployeeSortField = (typeof EMPLOYEE_SORT_FIELDS)[number];
+
+/** Which employees the directory lists. Active is the everyday view. */
+export const EMPLOYEE_STATUSES = ["active", "terminated", "all"] as const;
+export type EmployeeStatus = (typeof EMPLOYEE_STATUSES)[number];
 
 /** Query string for GET /api/employees. Every field is optional with a safe default. */
 export const employeeListQuerySchema = z.object({
@@ -22,7 +27,7 @@ export const employeeListQuerySchema = z.object({
     .optional()
     .transform((value) => (value ? value : undefined)),
   ...employeeFiltersShape,
-  includeTerminated: z.stringbool().default(false),
+  status: z.enum(EMPLOYEE_STATUSES).default("active"),
   sort: z.enum(EMPLOYEE_SORT_FIELDS).default("name"),
   order: z.enum(["asc", "desc"]).default("asc"),
 });

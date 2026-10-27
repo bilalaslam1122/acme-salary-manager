@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { MAX_SALARY_MINOR } from "../../lib/validation/employee";
 import { generateDataset, type Dataset } from "./generate";
-import { COUNTRIES, USD_PER_UNIT_MICROS } from "./reference-data";
+import { COUNTRIES, REFERENCE_DATE, USD_PER_UNIT_MICROS } from "./reference-data";
 
 describe("generateDataset", () => {
   let dataset: Dataset;
@@ -10,8 +10,40 @@ describe("generateDataset", () => {
     dataset = generateDataset();
   });
 
-  it("generates 10,000 employees by default", () => {
-    expect(dataset.employees).toHaveLength(10_000);
+  it("generates 10,000 active and 400 former employees by default", () => {
+    const active = dataset.employees.filter((e) => e.terminatedAt === null);
+    expect(active).toHaveLength(10_000);
+    expect(dataset.employees).toHaveLength(10_400);
+  });
+
+  it("terminates former employees after hire, on or before the reference date", () => {
+    const former = dataset.employees.filter((e) => e.terminatedAt !== null);
+    for (const employee of former) {
+      const terminatedAt = new Date(employee.terminatedAt!);
+      expect(terminatedAt.getTime()).toBeGreaterThan(
+        new Date(employee.hireDate).getTime(),
+      );
+      expect(terminatedAt.getTime()).toBeLessThanOrEqual(REFERENCE_DATE.getTime());
+    }
+  });
+
+  it("records no salary change after an employee left", () => {
+    const terminatedAtById = new Map(
+      dataset.employees
+        .filter((e) => e.terminatedAt !== null)
+        .map((e) => [e.id!, new Date(e.terminatedAt!).getTime()]),
+    );
+    for (const row of dataset.salaryHistory) {
+      const terminatedAt = terminatedAtById.get(row.employeeId);
+      if (terminatedAt === undefined) continue;
+      expect(new Date(row.changedAt).getTime()).toBeLessThanOrEqual(terminatedAt);
+    }
+  });
+
+  it("keeps active employees identical whatever the attrition", () => {
+    const withoutFormer = generateDataset({ employeeCount: 50, formerEmployeeCount: 0 });
+    const withFormer = generateDataset({ employeeCount: 50, formerEmployeeCount: 5 });
+    expect(withFormer.employees.slice(0, 50)).toEqual(withoutFormer.employees);
   });
 
   it("produces identical data for the same seed", () => {

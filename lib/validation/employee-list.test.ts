@@ -6,25 +6,29 @@ describe("employeeListQuerySchema", () => {
     expect(employeeListQuerySchema.parse({})).toEqual({
       page: 1,
       pageSize: 50,
-      includeTerminated: false,
+      status: "active",
       sort: "name",
       order: "asc",
     });
   });
 
-  it("coerces numeric and boolean query params", () => {
+  it("coerces numeric query params and accepts a status", () => {
     const parsed = employeeListQuerySchema.parse({
       page: "3",
       pageSize: "25",
       departmentId: "4",
-      includeTerminated: "true",
+      status: "terminated",
     });
     expect(parsed).toMatchObject({
       page: 3,
       pageSize: 25,
       departmentId: 4,
-      includeTerminated: true,
+      status: "terminated",
     });
+  });
+
+  it("rejects an unknown status", () => {
+    expect(employeeListQuerySchema.safeParse({ status: "fired" }).success).toBe(false);
   });
 
   it("caps the page size", () => {

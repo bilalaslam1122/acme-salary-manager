@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReferenceData } from "@/lib/services/reference";
 import { parseDirectoryQuery } from "@/lib/validation/directory-url";
@@ -62,12 +62,28 @@ describe("DirectoryToolbar", () => {
     expect(router.push).toHaveBeenCalledWith("/employees");
   });
 
-  it("toggles terminated employees", () => {
-    renderToolbar();
+  it("switches to terminated employees, most recent leaver first", () => {
+    renderToolbar({ page: "5" });
+    const status = screen.getByRole("group", { name: "Status" });
 
-    fireEvent.click(screen.getByRole("switch", { name: "Show terminated" }));
+    expect(within(status).getByRole("button", { name: "Active" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    fireEvent.click(within(status).getByRole("button", { name: "Terminated" }));
 
-    expect(router.push).toHaveBeenCalledWith("/employees?includeTerminated=true");
+    expect(router.push).toHaveBeenCalledWith(
+      "/employees?status=terminated&sort=terminatedAt&order=desc",
+    );
+  });
+
+  it("shows the current status from the URL", () => {
+    renderToolbar({ status: "all" });
+
+    expect(screen.getByRole("button", { name: "All" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   it("shows the current filters from the URL", () => {
