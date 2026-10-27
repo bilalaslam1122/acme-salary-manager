@@ -104,11 +104,24 @@ export function handle<Args extends unknown[]>(
   handler: (...args: Args) => Promise<Response>,
 ): (...args: Args) => Promise<Response> {
   return async (...args) => {
+    let response: Response;
     try {
-      return await handler(...args);
+      response = await handler(...args);
     } catch (error) {
       unstable_rethrow(error);
-      return toErrorResponse(error);
+      response = toErrorResponse(error);
     }
+    return withPrivateCaching(response);
   };
+}
+
+/**
+ * API responses carry salary data, so neither the browser nor a shared cache may
+ * keep them (the platform default is `public`). A handler can still set its own.
+ */
+function withPrivateCaching(response: Response): Response {
+  if (!response.headers.has("cache-control")) {
+    response.headers.set("cache-control", "private, no-store");
+  }
+  return response;
 }

@@ -1,19 +1,21 @@
 "use client";
 
 import { LogOut } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
+/**
+ * A full page load, not a router navigation: Next's client router cache holds every
+ * page visited while signed in, so a soft navigation would let Back show salary
+ * data after sign-out. `replace` also drops the signed-in page from history.
+ */
 export function SignOutButton() {
-  const router = useRouter();
   const [pending, setPending] = useState(false);
 
   async function signOut() {
     setPending(true);
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
-    router.replace("/login");
-    router.refresh();
+    window.location.replace("/login");
   }
 
   return (

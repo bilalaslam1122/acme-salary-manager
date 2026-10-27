@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
-import { handle, parseInput, readJson, toErrorResponse } from "./handle";
+import { handle, json, parseInput, readJson, toErrorResponse } from "./handle";
 
 describe("handle", () => {
   it("rethrows Next.js control-flow errors instead of returning a 500", async () => {
@@ -15,6 +15,25 @@ describe("handle", () => {
       throw new NotFoundError("missing");
     });
     expect((await route()).status).toBe(404);
+  });
+});
+
+describe("handle caching", () => {
+  it("marks API responses private and uncacheable, since they carry salary data", async () => {
+    const ok = await handle(async () => json({ salary: 1 }))();
+    const failed = await handle(async () => {
+      throw new NotFoundError("gone");
+    })();
+
+    expect(ok.headers.get("cache-control")).toBe("private, no-store");
+    expect(failed.headers.get("cache-control")).toBe("private, no-store");
+  });
+
+  it("keeps a cache policy the handler set itself", async () => {
+    const route = handle(
+      async () => new Response("x", { headers: { "cache-control": "no-store" } }),
+    );
+    expect((await route()).headers.get("cache-control")).toBe("no-store");
   });
 });
 
