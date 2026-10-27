@@ -4,12 +4,12 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 7, HR Manager auth: complete. The backend is complete. Phase 8 (UI) is next.
+- Phase 8, app shell, login and directory UI: complete. Phase 9 is next.
 
 ## Current Goal
 
-- Phase 8: UI: the app shell, the login page, and the employee directory table with
-  URL-driven filters.
+- Phase 9: UI: the create/edit employee sheet, the terminate confirmation, and the
+  employee detail page with history.
 
 ## Completed
 
@@ -104,6 +104,26 @@ Update this file after every meaningful implementation change.
         - a 401 sweep over all 9 protected handlers (mutation-checked);
         - audit attribution through the API.
       - Smoke-tested 10 checks with `curl` against `next start`.
+- [x] Phase 8:
+      - `/login`: the card form is in the static HTML, and `?next=` is checked by
+        `safeNextPath` to prevent open redirects.
+      - `/` redirects to `/employees`.
+      - App shell: a fixed sidebar at 1024px and wider, and a sheet below that, with
+        the active nav state, the user's name and email, and sign out.
+      - `/employees` is a partial prerender. The static shell is followed by a
+        Suspense-streamed directory:
+        - a debounced (300 ms) search, filter selects for country, department and
+          title, and a "show terminated" switch;
+        - sortable column links with `aria-sort`;
+        - local and USD salary columns;
+        - pagination with "Showing x–y of n";
+        - an empty state with "Clear filters", plus `loading.tsx` and `error.tsx`.
+      - Pure helpers, each unit-tested: `formatMoney` and `formatUsdCents`,
+        `safeNextPath`, and `parseDirectoryQuery`, `directoryHref` and `sortHref`.
+      - 34 new tests (unit and React Testing Library).
+      - Smoke-tested on `next start`: 42 ms render with the USD sort, and a clean
+        server log.
+      - Known gap: the Insights nav link returns 404 until Phase 10.
 
 ## In Progress
 
@@ -132,7 +152,7 @@ Each bullet is one verifiable unit and one commit.
       holds from the first salary write.
 - [x] **Phase 7:** `feat:` HR Manager auth: seeded user, login and logout API, session
       cookie, and `proxy.ts` (+ tests).
-- [ ] **Phase 8:** `feat:` UI: the app shell, login page, and employee directory table
+- [x] **Phase 8:** `feat:` UI: the app shell, login page, and employee directory table
       with URL-driven filters.
 - [ ] **Phase 9:** `feat:` UI: the create/edit employee sheet, terminate confirmation,
       and employee detail with history.
@@ -357,6 +377,27 @@ Resolved:
   the hash differ on every run, so the `users` row is the one documented exception to
   the byte-identical seed. `upsertAdminUser` is idempotent and rotates the password
   on re-run.
+- **AD-29: The directory UI is server-rendered from the URL.**
+  - The page parses `searchParams` with the API schema and calls `listEmployees`
+    directly (AD-10).
+  - Sorting and pagination are plain `<Link>`s, which work without JS and support
+    prefetch and Back.
+  - Only the toolbar is a client component. It pushes new URLs inside
+    `startTransition`, so the old table stays visible with a spinner instead of
+    flashing a skeleton.
+  - URLs are canonical (fixed key order, defaults omitted). A test caught two
+    different URLs for the same view.
+  *Alternative:* client-side fetching of `/api/employees` with local state. That
+  means more JS, no SSR, and duplicated loading logic.
+- **AD-30: Lessons from Cache Components and Partial Prefetching (Next 16).**
+  - The build succeeded, but `next start` logged "unstable value `new Date()` while
+    prerendering `/employees`". The cause: `verifySessionToken` reads the clock
+    after `cookies()`, and with Partial Prefetching, cookies resolve during a
+    runtime prerender. The fix is `await connection()` in `getCurrentSession()`.
+  - `useSearchParams` in the login form made the form client-only, so the HTML had
+    no form. The fix reads `window.location` at submit time.
+  - Both were found only by inspecting the live server's HTML and logs. That check
+    is now a standing rule in code-standards.md.
 
 ## AI Prompts Log
 
@@ -371,6 +412,7 @@ Resolved:
 | 7 | 2026-10-26 | "continue" (Phase 5) | The insights SQL was verified two independent ways: hand-computed fixtures across GBP, USD, JPY and INR (including an even-count median), and a JS calculation over 300 generated employees compared against the SQL output. Self-review caught one weak test: the "≤ 20 buckets" case never triggered the clamp. It was replaced with an input that produces 21 buckets without the clamp. The build log exposed a bug from Phase 3: `handle()` caught Next's prerender bail-out error and logged it as a 500. It was fixed with `unstable_rethrow`, verified by a test using `notFound()`, and mutation-checked. The Phase 4 commit had also been made while an overlapping build was failing; from now on, the build must be clean before every commit. The shared filter SQL was extracted, and the existing directory tests were the safety net for that refactor. |
 | 8 | 2026-10-27 | "start where you left off" (new session, Phase 6) | The AI reread the context files and the git state first. Rollback was tested with a realistic failure (a broken `changed_by_id` FK) rather than a mock. The concurrency test was proven meaningful by mutation: without `FOR UPDATE` it fails in 3 of 5 runs, and with the lock it passes 5 of 5. The build is confirmed clean before committing. |
 | 9 | 2026-10-27 | "continue" (Phase 7, auth) | The AI read the Next 16 `proxy.md` first (Node runtime, matcher syntax, and the docs' advice not to rely on the proxy alone), which led to the two-layer design (AD-26). A new env test exposed a real Phase 3 bug: Zod 4's `z.email().trim()` validates before trimming. It was fixed in all 3 schemas, with a regression test. A mutation check (removing `requireSession` from one route) confirmed the 401 sweep catches it. Beyond the unit tests, it ran a 10-step `curl` smoke test against `next start`: redirects, 401s, cookie flags, login, logout and static assets. The generated dev password went only into the gitignored `.env` and was never printed. |
+| 10 | 2026-10-27 | "yes" (Phase 8, first UI) | The AI read the Cache Components and Suspense docs first.<br>• Logic was kept in pure, tested helpers, because async server components can't run in Vitest.<br>• A component test exposed non-canonical URLs (parameter order depended on click order). Fixed.<br>• The production build was clean, but inspecting `next start` HTML and logs found 2 issues that tests and the build missed: a prerender clock error, and a login form missing from the HTML (AD-30).<br>• A smoke run first gave false results: `pkill` missed the old server, so a stale process served mismatched build files. The AI noticed the inconsistency, freed the port by PID, and re-verified on a fresh server.<br>• No browser was connected, so visual review is pending with the user. |
 
 ## Session Notes
 

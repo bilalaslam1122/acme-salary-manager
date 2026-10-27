@@ -36,6 +36,21 @@
   mutate through `app/api/*` with `fetch`.
 - Keep directory state (page, search, filters, sort) in URL search params, so views
   can be linked and the back button works.
+  - Parse the params with the same Zod schema as the API (`parseDirectoryQuery`).
+    Invalid URLs fall back to defaults.
+  - Build URLs only with `directoryHref` and `sortHref`, which emit keys in a fixed
+    order, so each view has exactly one URL.
+- Cache Components rules (Next 16; see AD-30):
+  - Any component that awaits `searchParams`, `cookies()` or uncached DB reads must
+    render inside `<Suspense>`, with a skeleton fallback.
+  - Code that reads the clock or randomness during render must call
+    `await connection()` first. With Partial Prefetching, cookies can resolve during
+    a runtime prerender, and `new Date()` then logs "unstable value" errors.
+  - Avoid `useSearchParams` in components that should be in the static HTML. It
+    turns the subtree up to the nearest Suspense boundary into client-only
+    rendering. Read `window.location` in event handlers instead.
+- After every UI unit, run `next start` and check the server log for prerender
+  errors. These appear only at request time, not in the build.
 - Use `loading.tsx` and `error.tsx` for each route segment, and `not-found.tsx` for
   missing employees.
 - After a mutation, refresh data with `router.refresh()`. Do not keep a parallel

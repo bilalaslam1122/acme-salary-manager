@@ -62,11 +62,21 @@ Text contrast must meet WCAG AA. Muted text on the surface colour is 4.8:1.
 
 The app uses shadcn/ui on top of Tailwind. The primitives live in `components/ui/` and
 are **protected**: add them with `npx shadcn add <name>` and do not hand-edit them.
-Compose them in feature components instead. The expected primitives are button,
-input, label, select, combobox (command + popover), table, sheet, dialog,
-alert-dialog, card, badge, skeleton, sonner (toasts), dropdown-menu, pagination,
-tooltip, form and tabs. Charts use Recharts, wrapped in `components/insights/*`, and
-take colours from the `--chart-*` tokens.
+Compose them in feature components instead.
+
+- **Installed so far:** button, input, label, native-select, table, sheet, card,
+  badge, skeleton, switch, separator and sonner.
+- **Expected later:** dialog, alert-dialog, combobox (command + popover) and tabs.
+- **Filters use `native-select`, not the Radix `select`.** A native `<select>` gives
+  full keyboard and screen reader support and the platform picker on mobile. It is
+  also testable in jsdom with `fireEvent.change`.
+- **Pagination is built from Button and Link** rather than shadcn's pagination block,
+  because the pages are plain links built by `directoryHref`.
+- **The `sonner` wrapper follows `next-themes`.** The app is light-only, so render
+  `<Toaster theme="light" />` instead of editing the protected file.
+
+Charts use Recharts, wrapped in `components/insights/*`, and take colours from the
+`--chart-*` tokens.
 
 ## Layout Patterns
 
