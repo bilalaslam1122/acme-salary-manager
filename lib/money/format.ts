@@ -27,6 +27,18 @@ export function formatMoney(
   return formatter(currency).format(amountMinor / 10 ** exponent);
 }
 
+const compactUsd = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
+/** Axis ticks and tight labels: 6_350_000 → "$63.5K", 125_000_000 → "$1.3M". */
+export function formatUsdCompact(cents: number): string {
+  return compactUsd.format(cents / 100);
+}
+
 /** e.g. 6_350_000 → "$63,500". */
 export function formatUsdCents(cents: number): string {
   return formatMoney(cents, "USD", 2);

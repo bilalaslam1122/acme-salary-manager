@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatMoney, formatUsdCents } from "./format";
+import { formatMoney, formatUsdCents, formatUsdCompact } from "./format";
 
 describe("formatMoney", () => {
   it("formats two-decimal currencies from minor units", () => {
@@ -17,6 +17,17 @@ describe("formatMoney", () => {
 
   it("rounds to whole units for display", () => {
     expect(formatMoney(5_000_050, "USD", 2)).toBe("$50,001");
+  });
+});
+
+describe("formatUsdCompact", () => {
+  it.each([
+    [0, "$0"],
+    [3_500_000, "$35K"],
+    [6_350_000, "$63.5K"],
+    [125_000_000, "$1.3M"],
+  ])("formats %i cents as %s", (cents, expected) => {
+    expect(formatUsdCompact(cents)).toBe(expected);
   });
 });
 

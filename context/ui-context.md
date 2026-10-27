@@ -48,7 +48,9 @@ Text contrast must meet WCAG AA. Muted text on the surface colour is 4.8:1.
 - Fonts are loaded with `next/font`. The base size is 14px (`text-sm`) for tables and
   forms. Page titles use `text-xl font-semibold`, and card titles use
   `text-sm font-medium` in muted text.
-- Numeric cells and stat values use `tabular-nums`. Employee codes use the mono font.
+- Numeric table cells and axis ticks use `tabular-nums`. Large standalone figures
+  (stat tiles) use proportional figures, because `tabular-nums` looks loose at display
+  sizes. Employee codes use the mono font.
 
 ## Border Radius
 
@@ -66,7 +68,8 @@ Compose them in feature components instead.
 
 - **Installed so far:** button, input, label, native-select, table, sheet, card,
   badge, skeleton, switch, separator, sonner and alert-dialog.
-- **Expected later:** tabs, for Insights.
+- **Not needed:** tabs. The Insights group switch is a set of URL links, so the
+  view can be linked and the back button works.
 - **The job title field is an `<input>` with a `<datalist>`**, not a command+popover
   combobox (AD-33). It suggests the titles in use and still accepts a new one.
 - **Filters use `native-select`, not the Radix `select`.** A native `<select>` gives
@@ -101,12 +104,34 @@ Charts use Recharts, wrapped in `components/insights/*`, and take colours from t
 - **Employee detail:** A header card holds the name, code, title, department, country
   and the current salary in local currency plus USD. Below it, the Salary history
   table shows date, old, new, change %, reason and changed-by, newest first.
-- **Dashboard (Insights):** A filter bar holds country, department and title. A row
-  of 4 stat cards shows Headcount, Median, Average, and Min–Max, in USD. A two-column
-  grid holds the charts: "Salary by…" (Tabs: Country / Department / Job title; a
-  bar chart of the median with a min–max range plus a data table) and "Headcount by
-  country". A full-width salary distribution histogram comes next. The footer note
-  reads "USD at FX version {version} ({date})".
+- **Dashboard (Insights):**
+  - One filter row (country, department, title) sits above everything and scopes
+    every stat and chart. "Clear filters" appears when any filter is set.
+  - A KPI row of 4 stat tiles shows Headcount, Median, Average, and the salary
+    range, in USD.
+  - A two-column grid (at `xl` and wider) holds two cards:
+    - "Median salary by…", with a segmented control (Country / Department / Job
+      title), which is a set of links, not Radix Tabs. It shows a horizontal bar
+      chart of the median, with a stats table (headcount, min, median, avg, max)
+      always visible below it.
+    - "Headcount by country", a horizontal bar chart.
+  - A full-width salary distribution histogram comes next.
+  - The footer note reads "Active employees only. USD at FX version {version}
+    ({date})".
+- **Charts** follow the dataviz method:
+  - **Color:** one hue (`--chart-1`, validated: passes lightness, chroma and ≥ 3:1
+    contrast on the white surface) for every bar, because the categories are
+    nominal. There is no categorical palette and no color legend for a single
+    series. Text never uses the chart hue.
+  - **Marks:** bars at most 24 px, with a 4 px rounded data end, square at the
+    baseline. Gridlines are solid hairlines. Marks are styled through CSS
+    (`ChartFrame`), because SVG presentation attributes can't read CSS variables.
+  - **Interaction:** a tooltip in which the value leads and the category follows.
+    The Recharts `accessibilityLayer` gives keyboard focus the same tooltip.
+  - **Table view:** every chart has one. The "Salary by" stats table is always
+    visible; the other two use a native `<details>` "View as table".
+  - **Refetch:** filter changes run in a transition, so the previous render stays
+    on screen with a spinner. There is no skeleton flash.
 
 ## States
 

@@ -4,11 +4,12 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 9, employee form, detail and history UI: complete. Phase 10 is next.
+- Phase 10, insights dashboard: complete. Phase 11 is next.
 
 ## Current Goal
 
-- Phase 10: UI: the insights dashboard with stat cards and charts.
+- Phase 11: polish the empty, error and loading states, check performance at 10k,
+  and finish the README.
 
 ## Completed
 
@@ -149,6 +150,25 @@ Update this file after every meaningful implementation change.
       - Smoke-tested on `next start`: a full create → raise → terminate cycle
         through the API, checking the detail HTML after each step, with zero log
         errors.
+- [x] Phase 10:
+      - `/insights` (partial prerender) has:
+        - a URL-driven filter row that scopes everything;
+        - a KPI row (headcount, median, average, range);
+        - "Median salary by" country, department or title (link tabs), with a
+          horizontal bar chart and a full stats table;
+        - headcount by country;
+        - the salary histogram;
+        - a "View as table" twin for each chart, an empty state, and loading and
+          error states;
+        - the FX version in the footer.
+      - The Recharts components are thin, and all shaping logic is in pure
+        `lib/insights/chart-data.ts`.
+      - `FilterSelect` is shared with the directory.
+      - 27 new tests: unit tests for the URL, chart data and compact USD, and
+        component tests that render the real Recharts charts at a fixed size.
+      - Live check: the dashboard's stat tiles match the API's `/summary` JSON
+        exactly for 3 filter sets (12 of 12 values), it renders in 46 ms, and the
+        server log has no errors. The Insights nav link now works.
 
 ## In Progress
 
@@ -181,7 +201,7 @@ Each bullet is one verifiable unit and one commit.
       with URL-driven filters.
 - [x] **Phase 9:** `feat:` UI: the create/edit employee sheet, terminate confirmation,
       and employee detail with history.
-- [ ] **Phase 10:** `feat:` UI: the insights dashboard with stat cards and charts.
+- [x] **Phase 10:** `feat:` UI: the insights dashboard with stat cards and charts.
 - [ ] **Phase 11:** `chore:` Polish the empty, error and loading states, verify the
       performance goals at 10k, and write the README.
 - [ ] **Phase 12:** `chore:` Deploy, seed production, and write the demo script for
@@ -446,6 +466,26 @@ Resolved:
   use.** It is not the command+popover combobox from ui-context.md. It is native,
   accessible, works with keyboard and mobile, needs no new dependency, and still
   allows a new title (Q5: free text).
+- **AD-34: The chart method follows the dataviz guidance.**
+  - **Form first:** every chart is a single series of magnitude over nominal
+    categories, so each uses one color for every bar. A darker-is-bigger ramp would
+    double-encode bar length, and a categorical palette would invent identities that
+    don't exist.
+  - The headline numbers are stat tiles, not charts.
+  - The "Salary by" view plots only the median (one honest measure) and moves
+    min, avg and max into an always-visible table, instead of a crowded range-bar
+    chart.
+  - The color was validated with the dataviz `validate_palette.js` rather than
+    eyeballed.
+  *Alternative:* a min–max range bar with a median marker. It is richer, but harder
+  to read at 15 job titles, and Recharts range bars in the vertical layout add
+  complexity.
+- **AD-35: Charts are thin client components fed by pure data shaping.** jsdom has
+  no layout, so `ResponsiveContainer` draws nothing in tests. The shaping logic
+  (cents to dollars, ordering, bucket labels, container height including the axis
+  band) is unit-tested, and the chart components are rendered with a fixed-size
+  container stand-in to check their real configuration. One vacuous test (it
+  claimed to check bar order but asserted nothing) was deleted rather than kept.
 
 ## AI Prompts Log
 
@@ -462,6 +502,7 @@ Resolved:
 | 9 | 2026-10-27 | "continue" (Phase 7, auth) | The AI read the Next 16 `proxy.md` first (Node runtime, matcher syntax, and the docs' advice not to rely on the proxy alone), which led to the two-layer design (AD-26). A new env test exposed a real Phase 3 bug: Zod 4's `z.email().trim()` validates before trimming. It was fixed in all 3 schemas, with a regression test. A mutation check (removing `requireSession` from one route) confirmed the 401 sweep catches it. Beyond the unit tests, it ran a 10-step `curl` smoke test against `next start`: redirects, 401s, cookie flags, login, logout and static assets. The generated dev password went only into the gitignored `.env` and was never printed. |
 | 10 | 2026-10-27 | "yes" (Phase 8, first UI) | The AI read the Cache Components and Suspense docs first.<br>• Logic was kept in pure, tested helpers, because async server components can't run in Vitest.<br>• A component test exposed non-canonical URLs (parameter order depended on click order). Fixed.<br>• The production build was clean, but inspecting `next start` HTML and logs found 2 issues that tests and the build missed: a prerender clock error, and a login form missing from the HTML (AD-30).<br>• A smoke run first gave false results: `pkill` missed the old server, so a stale process served mismatched build files. The AI noticed the inconsistency, freed the port by PID, and re-verified on a fresh server.<br>• No browser was connected, so visual review is pending with the user. |
 | 11 | 2026-10-27 | "yes" (Phase 9) | The AI narrowed the untrusted API error body with type guards after a type error exposed an unsafe union. The production build failed (`usePathname` outside Suspense on the new dynamic route), but a `grep` pipeline had masked the exit code. The AI caught the real failure in the log, fixed it (AD-30 addendum), switched to checking the build's real exit status, and confirmed the earlier phases' builds were genuine passes (their logs print the route table, which failed builds never do). Live smoke test: a full create → raise → terminate cycle checked through the detail page HTML, with zero errors in the server log. The not-found HTTP 200 was investigated, confirmed as Next streaming behaviour, and recorded (AD-32). |
+| 12 | 2026-10-27 | "continue" (Phase 10, insights), then "sure" after a tool-permission outage | The AI loaded the dataviz skill before writing any chart code. It followed the procedure (form, then color, then validator, then marks, then interaction, then table views) and validated the chart color with the provided script. Self-review deleted one vacuous test. After the outage, it checked what held port 3100 instead of killing it blindly: it was a VS Code helper, so the AI used port 3210. A smoke-script bug (zsh doesn't word-split unquoted variables) produced garbage, which the AI recognised and rewrote. An unexpected count of 10,001 active employees was investigated in SQL rather than "fixed": it was an employee the user had added through the UI. Final check: the dashboard tiles match the API exactly (12 of 12). |
 
 ## Session Notes
 

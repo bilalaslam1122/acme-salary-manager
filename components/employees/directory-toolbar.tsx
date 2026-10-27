@@ -3,9 +3,9 @@
 import { LoaderCircle, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
+import { FilterSelect } from "@/components/common/filter-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Switch } from "@/components/ui/switch";
 import type { ReferenceData } from "@/lib/services/reference";
 import { directoryHref } from "@/lib/validation/directory-url";
@@ -112,40 +112,6 @@ export function DirectoryToolbar({ query, reference }: DirectoryToolbarProps) {
           aria-label="Updating results"
         />
       )}
-    </div>
-  );
-}
-
-function FilterSelect({
-  id,
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <Label htmlFor={id} className="text-xs text-muted-foreground">
-        {label}
-      </Label>
-      <NativeSelect
-        id={id}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        <NativeSelectOption value="">All</NativeSelectOption>
-        {options.map((option) => (
-          <NativeSelectOption key={option.value} value={option.value}>
-            {option.label}
-          </NativeSelectOption>
-        ))}
-      </NativeSelect>
     </div>
   );
 }
