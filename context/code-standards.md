@@ -77,6 +77,8 @@
   204.
 - Services take an `ActorContext` (`actorId`, plus an optional `now` for
   deterministic tests) for any write that is audited.
+- `GET /api/employees/[id]/history` is paginated and newest first. Paginated
+  endpoints take `page` and `pageSize` from the shared `paginationShape`.
 - Insights endpoints are `/api/insights/summary`, `/api/insights/by-group` and
   `/api/insights/distribution`. They return amounts in USD cents and include
   `meta.fx`.

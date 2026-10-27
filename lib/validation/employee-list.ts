@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { employeeFiltersShape } from "./employee-filters";
+import { paginationShape } from "./pagination";
 
-export const MAX_PAGE_SIZE = 100;
-export const DEFAULT_PAGE_SIZE = 50;
+export { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "./pagination";
 
 export const EMPLOYEE_SORT_FIELDS = [
   "name",
@@ -14,8 +14,7 @@ export type EmployeeSortField = (typeof EMPLOYEE_SORT_FIELDS)[number];
 
 /** Query string for GET /api/employees. Every field is optional with a safe default. */
 export const employeeListQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
+  ...paginationShape,
   q: z
     .string()
     .trim()

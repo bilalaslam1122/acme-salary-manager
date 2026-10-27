@@ -4,12 +4,12 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 5, insights service and API: complete. Phase 6 is next.
+- Phase 6, salary history read API: complete. Phase 7 is next.
 
 ## Current Goal
 
-- Phase 6: the salary history read API (`GET /api/employees/[id]/history`) plus
-  rollback tests.
+- Phase 7: HR Manager auth: the seeded user, the login and logout API, the session
+  cookie, and `proxy.ts`, with tests.
 
 ## Completed
 
@@ -67,6 +67,23 @@ Update this file after every meaningful implementation change.
         - An independent JS calculation over 300 generated employees.
         - The histogram clamp, empty sets, and the APIs.
         - Performance at 10k: 19–29 ms against the 500 ms budget.
+- [x] Phase 6:
+      - `GET /api/employees/[id]/history` returns `{ data, meta }`, newest first and
+        paginated. Each row has old and new salary, each with its own currency and
+        exponent.
+      - `changePercent` has one decimal, and is null for the initial salary and for
+        currency changes.
+      - Each row has the reason, and `changedBy` with id and name (null means
+        system).
+      - The endpoint returns 404 for an unknown employee and works for terminated
+        employees.
+      - The pagination params are shared through `lib/validation/pagination.ts`.
+      - 11 new tests:
+        - Rollback: a forced foreign-key failure on the history insert leaves the
+          salary and history unchanged, and creates no employee.
+        - Concurrent edits keep the history chain consistent. A mutation check
+          showed that removing `FOR UPDATE` fails the test in 3 of 5 runs, and it
+          passes 5 of 5 with the lock.
 
 ## In Progress
 
@@ -89,7 +106,7 @@ Each bullet is one verifiable unit and one commit.
 - [x] **Phase 5:** `feat:` The insights service and API: min, max, avg and median by
       group, headcount by country, histogram, and USD normalization (+ tests with
       hand-computed expectations).
-- [ ] **Phase 6:** `feat:` The salary history read API
+- [x] **Phase 6:** `feat:` The salary history read API
       (`GET /api/employees/[id]/history`, newest first, paginated) plus explicit
       rollback tests. The transactional write moved into Phase 3, so Invariant 5
       holds from the first salary write.
@@ -299,6 +316,11 @@ Resolved:
   past the last edge are folded into the last bucket with `LEAST(…, n-1)`, so there
   are never more than 20 buckets. Empty buckets are filled in JS: at most 20 array
   slots, which is not aggregation over rows.
+- **AD-25: The history API uses Prisma `findMany` and `count`, not raw SQL.** It needs
+  no FX join or aggregation. `changePercent` is computed per row on at most 100 rows
+  in the service (a presentation value, not aggregation). It is withheld across
+  currencies, because a GBP→JPY "percent" would be meaningless. Order is
+  `changedAt DESC, id DESC`, so changes on the same timestamp keep a stable order.
 
 ## AI Prompts Log
 
@@ -311,6 +333,7 @@ Resolved:
 | 5 | 2026-10-26 | "continue" (Phase 3) | The AI checked the Next 16 route handler docs (`RouteContext`, async `params`) before writing handlers. During design it found an audit gap (country moves change currency) and a concurrency race on "old salary", and fixed both (AD-17, AD-18). It moved the transactional history write from Phase 6 into Phase 3, to avoid shipping a known invariant violation. A mutation test confirmed the history tests fail when the write is removed. Product rules it had to assume are listed as Open Questions 9–12 instead of being decided silently. |
 | 6 | 2026-10-26 | "sure" (confirm assumptions 9–12, then Phase 4) | Before writing tests, the AI ran EXPLAIN ANALYZE against the 10k dev data to confirm index use and timings. It used hand-computed USD expectations (for example £50,000 × 1.27 = $63,500) to verify the conversion across GBP, USD, JPY (exponent 0) and INR. The performance test was run verbose to record the real timings, not just a pass. An SQL-injection-style `sort` value is covered by a test. |
 | 7 | 2026-10-26 | "continue" (Phase 5) | The insights SQL was verified two independent ways: hand-computed fixtures across GBP, USD, JPY and INR (including an even-count median), and a JS calculation over 300 generated employees compared against the SQL output. Self-review caught one weak test: the "≤ 20 buckets" case never triggered the clamp. It was replaced with an input that produces 21 buckets without the clamp. The build log exposed a bug from Phase 3: `handle()` caught Next's prerender bail-out error and logged it as a 500. It was fixed with `unstable_rethrow`, verified by a test using `notFound()`, and mutation-checked. The Phase 4 commit had also been made while an overlapping build was failing; from now on, the build must be clean before every commit. The shared filter SQL was extracted, and the existing directory tests were the safety net for that refactor. |
+| 8 | 2026-10-27 | "start where you left off" (new session, Phase 6) | The AI reread the context files and the git state first. Rollback was tested with a realistic failure (a broken `changed_by_id` FK) rather than a mock. The concurrency test was proven meaningful by mutation: without `FOR UPDATE` it fails in 3 of 5 runs, and with the lock it passes 5 of 5. The build is confirmed clean before committing. |
 
 ## Session Notes
 
