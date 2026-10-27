@@ -103,3 +103,24 @@ export async function queryHistogramCounts(
     GROUP BY 1
     ORDER BY 1`;
 }
+
+/**
+ * Active employees matching the filters whose salary currency has no rate at the
+ * active FX version. The USD aggregates above cannot include them, so the page has
+ * to say how many were left out rather than under-count silently.
+ */
+export async function queryUnconvertibleCount(filters: EmployeeFilters): Promise<number> {
+  const where = whereSql([
+    Prisma.sql`e.terminated_at IS NULL`,
+    ...employeeFilterConditions(filters),
+    Prisma.sql`NOT EXISTS (
+      SELECT 1 FROM exchange_rates r
+      WHERE r.currency_code = e.salary_currency
+        AND r.version = (SELECT version FROM active_fx)
+    )`,
+  ]);
+  const [row] = await prisma.$queryRaw<{ count: number }[]>`
+    WITH ${activeFxVersionCte}
+    SELECT COUNT(*)::int AS count FROM employees e ${where}`;
+  return row?.count ?? 0;
+}

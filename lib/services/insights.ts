@@ -4,6 +4,7 @@ import {
   queryHistogramCounts,
   querySalaryStats,
   querySalaryStatsByGroup,
+  queryUnconvertibleCount,
   type StatsRow,
 } from "@/lib/db/insights";
 import type { EmployeeFilters } from "@/lib/validation/employee-filters";
@@ -41,11 +42,22 @@ export interface InsightsResult<T> {
   meta: { fx: ActiveFx | null };
 }
 
-export async function getSalarySummary(
-  filters: EmployeeFilters,
-): Promise<InsightsResult<SalaryStats>> {
-  const [row, fx] = await Promise.all([querySalaryStats(filters), queryActiveFx()]);
-  return { data: toStats(row), meta: { fx } };
+export interface SalarySummary {
+  data: SalaryStats;
+  meta: {
+    fx: ActiveFx | null;
+    /** Active employees left out of every USD figure: their currency has no rate. */
+    excludedWithoutFx: number;
+  };
+}
+
+export async function getSalarySummary(filters: EmployeeFilters): Promise<SalarySummary> {
+  const [row, fx, excludedWithoutFx] = await Promise.all([
+    querySalaryStats(filters),
+    queryActiveFx(),
+    queryUnconvertibleCount(filters),
+  ]);
+  return { data: toStats(row), meta: { fx, excludedWithoutFx } };
 }
 
 export async function getSalaryByGroup(

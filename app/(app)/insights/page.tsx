@@ -36,6 +36,8 @@ import {
 
 export const metadata: Metadata = { title: "Insights · ACME Salary Manager" };
 
+const countFormat = new Intl.NumberFormat("en-US");
+
 const GROUP_LABEL: Record<InsightGroup, string> = {
   country: "Country",
   department: "Department",
@@ -69,11 +71,24 @@ async function InsightsContent({
     getReferenceData(),
   ]);
   const fx = summary.meta.fx;
+  const { excludedWithoutFx } = summary.meta;
   const histogram = histogramRows(distribution.data.buckets);
 
   return (
     <div className="flex flex-col gap-4">
       <InsightsFilters query={query} reference={reference} />
+
+      {excludedWithoutFx > 0 && (
+        <p
+          role="status"
+          className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-foreground"
+        >
+          {countFormat.format(excludedWithoutFx)}{" "}
+          {excludedWithoutFx === 1 ? "employee is" : "employees are"} left out of these
+          figures because their salary currency has no exchange rate
+          {fx ? ` in FX version ${fx.version}` : ""}. Add the rate to include them.
+        </p>
+      )}
 
       {summary.data.headcount === 0 ? (
         <Card className="rounded-lg">

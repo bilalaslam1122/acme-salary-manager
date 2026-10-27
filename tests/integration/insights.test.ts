@@ -76,6 +76,22 @@ describe("getSalarySummary", () => {
     });
   });
 
+  it("reports no exclusions when every currency has a rate", async () => {
+    const { meta } = await getSalarySummary({});
+    expect(meta.excludedWithoutFx).toBe(0);
+  });
+
+  it("counts active employees left out because their currency has no rate", async () => {
+    await testPrisma.exchangeRate.deleteMany({ where: { currencyCode: "JPY" } });
+
+    const all = await getSalarySummary({});
+    expect(all.data.headcount).toBe(4);
+    expect(all.meta.excludedWithoutFx).toBe(1);
+
+    const filtered = await getSalarySummary({ countryCode: "GB" });
+    expect(filtered.meta.excludedWithoutFx).toBe(0);
+  });
+
   it("reports the FX version used", async () => {
     const { meta } = await getSalarySummary({});
     expect(meta.fx).toEqual({ version: "2026-10", effectiveDate: "2026-10-01" });
