@@ -69,6 +69,7 @@ Sign in with `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` from your `.env`.
 | `npm run build`      | Generate the Prisma client and build for production |
 | `npm start`          | Serve the production build                          |
 | `npm run test`       | Run unit, component and integration tests           |
+| `npm run test:perf`  | Check the latency budgets against a 10k-row dataset |
 | `npm run lint`       | ESLint, zero warnings allowed                       |
 | `npm run typecheck`  | Generate route types and run `tsc`                  |
 | `npm run format`     | Format with Prettier                                |
@@ -173,8 +174,9 @@ requests per URL, on a local machine.
 | `/employees` page (USD sort)              |  26 ms | 36 ms | —        |
 | `/insights` page (by job title)           |  40 ms | 44 ms | —        |
 
-The integration suite also enforces these budgets on every run
-(`tests/integration/performance.test.ts`).
+`npm run test:perf` checks these budgets against the full 10,000-employee seed
+(`tests/performance/`). It is kept out of `npm test` on purpose: timings depend on
+the machine, and a test that fails on a slow CI runner is not deterministic.
 
 ## How this was built
 

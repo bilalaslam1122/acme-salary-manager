@@ -52,6 +52,24 @@ export default defineConfig({
           testTimeout: 30_000,
         },
       },
+      {
+        // Timing budgets (Goals 1 and 2) depend on the machine, so they are kept out
+        // of `npm test` and run on demand with `npm run test:perf`.
+        extends: true,
+        test: {
+          name: "performance",
+          environment: "node",
+          include: ["tests/performance/**/*.test.ts"],
+          globalSetup: ["./tests/integration/global-setup.ts"],
+          fileParallelism: false,
+          env: {
+            NODE_ENV: "test",
+            DATABASE_URL: process.env.TEST_DATABASE_URL ?? "",
+            SESSION_SECRET: TEST_SESSION_SECRET,
+          },
+          testTimeout: 30_000,
+        },
+      },
     ],
   },
 });

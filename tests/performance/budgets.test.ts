@@ -8,7 +8,7 @@ import {
 import { employeeListQuerySchema } from "@/lib/validation/employee-list";
 import { generateDataset } from "@/prisma/seed/generate";
 import { writeDataset } from "@/prisma/seed/write";
-import { testPrisma } from "./db";
+import { testPrisma } from "../integration/db";
 
 // Goals 1 and 2 (project-overview.md), measured against the full 10,000-employee seed.
 const DIRECTORY_BUDGET_MS = 300;
