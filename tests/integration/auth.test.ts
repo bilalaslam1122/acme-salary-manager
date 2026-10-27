@@ -121,6 +121,7 @@ describe("POST /api/auth/demo", () => {
   });
 
   it("returns 404 and sets no cookie unless DEMO_LOGIN=true", async () => {
+    vi.stubEnv("DEMO_LOGIN", "false");
     await upsertDemoUser(testPrisma);
 
     const response = await demoLogin();

@@ -63,6 +63,14 @@ describe("proxy with a valid session", () => {
     },
   );
 
+  it.each(["/employees", "/insights", "/api/employees"])(
+    "keeps %s out of browser and shared caches, so Back can't replay it after sign-out",
+    async (path) => {
+      const response = await proxy(request(path, validCookie));
+      expect(response.headers.get("cache-control")).toBe("private, no-store");
+    },
+  );
+
   it("sends a signed-in user away from /login", async () => {
     const response = await proxy(request("/login", validCookie));
     expect(response.status).toBe(307);

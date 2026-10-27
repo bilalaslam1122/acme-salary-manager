@@ -22,7 +22,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     return NextResponse.next();
   }
 
-  if (session) return NextResponse.next();
+  if (session) return privateNoStore(NextResponse.next());
 
   if (pathname.startsWith("/api/")) {
     return NextResponse.json(
@@ -34,6 +34,16 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   const loginUrl = new URL("/login", request.url);
   loginUrl.searchParams.set("next", `${pathname}${search}`);
   return NextResponse.redirect(loginUrl);
+}
+
+/**
+ * Signed-in pages are partially prerendered, so the platform sends them as
+ * "public, max-age=0". Browsers replay such a page from their HTTP cache on Back,
+ * which showed salary data after sign-out. `no-store` keeps them out of every cache.
+ */
+function privateNoStore(response: NextResponse): NextResponse {
+  response.headers.set("Cache-Control", "private, no-store");
+  return response;
 }
 
 export const config = {
