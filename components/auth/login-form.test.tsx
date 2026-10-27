@@ -30,6 +30,32 @@ async function submit(email = "hr@acme.example", password = "secret-password") {
 }
 
 describe("LoginForm", () => {
+  it("hides the password by default and lets the user show and hide it", async () => {
+    const user = userEvent.setup();
+    render(<LoginForm />);
+    const password = screen.getByLabelText("Password");
+    const toggle = screen.getByRole("button", { name: "Show password" });
+
+    expect(password).toHaveAttribute("type", "password");
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(toggle);
+    expect(password).toHaveAttribute("type", "text");
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(toggle);
+    expect(password).toHaveAttribute("type", "password");
+  });
+
+  it("does not submit the form when the visibility toggle is clicked", async () => {
+    const user = userEvent.setup();
+    render(<LoginForm />);
+
+    await user.click(screen.getByRole("button", { name: "Show password" }));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("posts the credentials as JSON", async () => {
     fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
 

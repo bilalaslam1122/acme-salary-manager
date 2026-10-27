@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderCircle } from "lucide-react";
+import { Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type SubmitEvent } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ export function LoginForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,13 +55,33 @@ export function LoginForm() {
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-        />
+        <div className="relative">
+          <Input
+            id="password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            className="pr-10"
+            required
+          />
+          {/* Same name in both states; aria-pressed carries "shown" vs "hidden". */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute top-1/2 right-0.5 h-8 w-8 -translate-y-1/2 text-muted-foreground"
+            aria-label="Show password"
+            aria-pressed={showPassword}
+            aria-controls="password"
+            onClick={() => setShowPassword((shown) => !shown)}
+          >
+            {showPassword ? (
+              <EyeOff className="h-4 w-4" aria-hidden />
+            ) : (
+              <Eye className="h-4 w-4" aria-hidden />
+            )}
+          </Button>
+        </div>
       </div>
       {error && (
         <p role="alert" className="text-sm text-destructive">
