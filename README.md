@@ -7,6 +7,10 @@ questions such as _"what's the median salary for engineers in India?"_ or _"how 
 a Software Engineer's pay compare across countries in USD?"_ in two clicks or fewer
 from the Insights page (one filter, one tab).
 
+**Live demo:** https://acme-salary-manager-jade.vercel.app (sign in as
+`hr@acme.example`; the password is shared with the submission). It runs the
+deterministic seed: 10,000 active and 400 former employees.
+
 The specs that drove the build live in [`context/`](context/). Start with the
 one-page [project overview](context/project-overview.md).
 
@@ -212,6 +216,22 @@ tests were mutation-checked so they can't pass vacuously.
 
 The [AI prompts log](context/progress-tracker.md#ai-prompts-log) records what I
 asked for in each phase, what I checked, and what I changed or rejected.
+
+## Deployment
+
+Production runs on **Vercel** (functions in `iad1`) with **Neon Postgres** in AWS
+us-east-1, so each query stays in one region.
+
+- The app's `DATABASE_URL` on Vercel is Neon's **pooled** URL. Serverless
+  functions open many short-lived connections, and the pooler absorbs them.
+  Interactive transactions (the salary-history write and row lock) still work,
+  because the pooler runs in transaction mode.
+- Migrations and the seed run from a workstation against Neon's **direct** URL:
+  `DATABASE_URL=<direct url> npm run db:deploy && npm run db:seed`. The seed's guard
+  (AD-41) stops a second run from wiping changes made in the live app.
+- `SESSION_SECRET` is a separate random value in production. The HR Manager
+  password is set when seeding production and is not the one in `.env.example`.
+- `vercel.json` pins the Next.js preset and the region.
 
 ## Known limitations
 

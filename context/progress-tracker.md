@@ -4,8 +4,8 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 11b, hardening after a self-review against the brief: complete. Phase 12
-  (deployment) is in progress.
+- Phase 12, deployment: live at https://acme-salary-manager-jade.vercel.app
+  (Vercel + Neon). The demo video is the last open item.
 
 ## Current Goal
 
@@ -249,8 +249,12 @@ Each bullet is one verifiable unit and one commit.
       - `fix(seed):` the seed refuses to wipe real HR changes (AD-41).
       - `fix(insights):` employees without an FX rate are counted, not silently
         dropped (AD-42).
-- [ ] **Phase 12:** `chore:` Deploy, seed production, and write the demo script for
-      the video.
+- [x] **Phase 12:** `chore:` Deployed to Vercel (`iad1`) with Neon Postgres
+      (us-east-1). Migrated and seeded through the direct URL; the app uses the
+      pooled URL. A live smoke test covered the auth redirects and 401s, login, the
+      directory, status filter, insights, CSV export, and a terminate/reinstate
+      write through the pooler (its test events were removed afterwards).
+- [ ] Record the demo video.
 
 ## Open Questions
 
