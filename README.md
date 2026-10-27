@@ -63,6 +63,10 @@ npm run dev                   # http://localhost:3000
 
 Sign in with `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` from your `.env`.
 
+`npm run db:seed` replaces all data. It refuses to run against a database that
+holds changes made by HR users (salary changes or audit events), so it can't wipe
+real work by mistake. Set `SEED_FORCE=true` to wipe it anyway.
+
 | Script               | Purpose                                             |
 | -------------------- | --------------------------------------------------- |
 | `npm run dev`        | Start the dev server                                |

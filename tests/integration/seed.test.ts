@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { generateDataset } from "@/prisma/seed/generate";
-import { writeDataset } from "@/prisma/seed/write";
+import { countUserMadeChanges, writeDataset } from "@/prisma/seed/write";
 import { resetDatabase, testPrisma } from "./db";
 
 const dataset = generateDataset({ employeeCount: 25 });
@@ -51,5 +51,34 @@ describe("writeDataset", () => {
 
     expect(stored.salaryMinor).toBe(expected.salaryMinor);
     expect(stored.hireDate).toEqual(expected.hireDate);
+  });
+
+  it("counts no user-made changes in freshly seeded data", async () => {
+    await writeDataset(testPrisma, dataset);
+
+    expect(await countUserMadeChanges(testPrisma)).toBe(0);
+  });
+
+  it("counts salary changes and events made by a signed-in user", async () => {
+    await writeDataset(testPrisma, dataset);
+    const user = await testPrisma.user.create({
+      data: { email: "hr@acme.example", name: "HR", passwordHash: "unused" },
+    });
+    const employeeId = dataset.employees[0]!.id!;
+    await testPrisma.salaryHistory.create({
+      data: {
+        employeeId,
+        oldSalaryMinor: 1,
+        newSalaryMinor: 2,
+        currency: "USD",
+        changedById: user.id,
+        changedAt: new Date(),
+      },
+    });
+    await testPrisma.employeeEvent.create({
+      data: { employeeId, type: "UPDATED", changedById: user.id, changedAt: new Date() },
+    });
+
+    expect(await countUserMadeChanges(testPrisma)).toBe(2);
   });
 });

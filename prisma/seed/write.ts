@@ -17,6 +17,20 @@ const TRUNCATE_ALL =
 
 type Executor = Pick<PrismaClient, "$executeRawUnsafe">;
 
+/**
+ * Changes made by a signed-in user (as opposed to the seed's system rows). A reset
+ * would destroy this real HR work, so the seed refuses unless forced.
+ */
+export async function countUserMadeChanges(
+  db: Pick<PrismaClient, "salaryHistory" | "employeeEvent">,
+): Promise<number> {
+  const [salaryChanges, events] = await Promise.all([
+    db.salaryHistory.count({ where: { changedById: { not: null } } }),
+    db.employeeEvent.count({ where: { changedById: { not: null } } }),
+  ]);
+  return salaryChanges + events;
+}
+
 /** Deletes all rows from every table and resets id sequences. */
 export async function truncateAll(db: Executor): Promise<void> {
   await db.$executeRawUnsafe(TRUNCATE_ALL);
