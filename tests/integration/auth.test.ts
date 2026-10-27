@@ -3,6 +3,8 @@ import { POST as login } from "@/app/api/auth/login/route";
 import { POST as logout } from "@/app/api/auth/logout/route";
 import { GET as getHistory } from "@/app/api/employees/[id]/history/route";
 import { GET as getEvents } from "@/app/api/employees/[id]/events/route";
+import { GET as exportEmployees } from "@/app/api/employees/export/route";
+import { GET as exportByGroup } from "@/app/api/insights/by-group/export/route";
 import { POST as reinstateEmployee } from "@/app/api/employees/[id]/reinstate/route";
 import {
   GET as getEmployee,
@@ -144,6 +146,8 @@ describe("protected API routes (Invariant 9)", () => {
     ],
     ["GET /api/employees/[id]/events", () => getEvents(anonymous(), ctx)],
     ["GET /api/employees/[id]/history", () => getHistory(anonymous(), ctx)],
+    ["GET /api/employees/export", () => exportEmployees(anonymous())],
+    ["GET /api/insights/by-group/export", () => exportByGroup(anonymous())],
     ["GET /api/insights/summary", () => getSummary(anonymous())],
     ["GET /api/insights/by-group", () => getByGroup(anonymous())],
     ["GET /api/insights/distribution", () => getDistribution(anonymous())],

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { EmptyState } from "@/components/common/empty-state";
+import { ExportLink } from "@/components/common/export-link";
 import { GroupTabs } from "@/components/insights/group-tabs";
 import { HistogramChart } from "@/components/insights/histogram-chart";
 import { HorizontalBarChart } from "@/components/insights/horizontal-bar-chart";
@@ -28,6 +29,7 @@ import type { InsightGroup } from "@/lib/validation/insights";
 import {
   filtersOf,
   hasFilters,
+  insightsExportHref,
   insightsHref,
   parseInsightsQuery,
 } from "@/lib/validation/insights-url";
@@ -101,7 +103,15 @@ async function InsightsContent({
           <div className="grid gap-4 xl:grid-cols-2">
             <ChartCard
               title={`Median salary by ${GROUP_LABEL[query.groupBy].toLowerCase()} (USD)`}
-              action={<GroupTabs query={query} />}
+              action={
+                <div className="flex flex-wrap items-center gap-2">
+                  <GroupTabs query={query} />
+                  <ExportLink
+                    href={insightsExportHref(query)}
+                    label={`Export salary by ${GROUP_LABEL[query.groupBy].toLowerCase()} as CSV`}
+                  />
+                </div>
+              }
             >
               <div className="px-4 pb-4">
                 <HorizontalBarChart

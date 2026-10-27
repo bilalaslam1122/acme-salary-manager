@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  directoryExportHref,
   directoryHref,
   hasDirectoryFilters,
   parseDirectoryQuery,
@@ -111,5 +112,26 @@ describe("sortHref", () => {
   it("flips back to ascending", () => {
     const query = parseDirectoryQuery({ sort: "salaryUsd", order: "desc" });
     expect(sortHref(query, "salaryUsd")).toBe("/employees?sort=salaryUsd");
+  });
+});
+
+describe("directoryExportHref", () => {
+  it("keeps the view's search, filters, status and sort but drops paging", () => {
+    const query = parseDirectoryQuery({
+      q: "ada",
+      countryCode: "GB",
+      status: "terminated",
+      sort: "terminatedAt",
+      order: "desc",
+      page: "7",
+      pageSize: "100",
+    });
+    expect(directoryExportHref(query)).toBe(
+      "/api/employees/export?q=ada&countryCode=GB&status=terminated&sort=terminatedAt&order=desc",
+    );
+  });
+
+  it("exports every active employee from the default view", () => {
+    expect(directoryExportHref(parseDirectoryQuery({}))).toBe("/api/employees/export");
   });
 });

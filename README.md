@@ -38,6 +38,11 @@ one-page [project overview](context/project-overview.md).
     average and max table.
   - Headcount by country, and a salary distribution histogram.
   - All figures are in USD, at a versioned, static FX rate shown on the page.
+- **CSV export** of exactly what is on screen: the directory (with its search,
+  filters, status and sort, every page) and the insights "salary by…" table. Amounts
+  are exact decimals, not formatted text, so they work in Excel formulas. The file
+  is UTF-8 with a BOM so Excel shows names and currency symbols correctly, and cells
+  that would run as spreadsheet formulas are neutralised.
 - **Sign-in** for the single HR Manager account, with a signed session cookie.
   Every page and API is protected.
 

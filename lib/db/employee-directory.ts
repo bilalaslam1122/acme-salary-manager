@@ -48,10 +48,39 @@ export async function queryEmployeeDirectory(
   query: EmployeeListQuery,
 ): Promise<DirectoryPage> {
   const where = whereClause(query);
-  const direction = query.order === "desc" ? Prisma.sql`DESC` : Prisma.sql`ASC`;
   const offset = (query.page - 1) * query.pageSize;
 
   const rowsQuery = prisma.$queryRaw<DirectoryRow[]>`
+    ${directorySelect(query, where)}
+    LIMIT ${query.pageSize} OFFSET ${offset}`;
+
+  const countQuery = prisma.$queryRaw<{ total: bigint }[]>`
+    SELECT COUNT(*) AS total FROM employees e ${where}`;
+
+  const [rows, [count], fx] = await Promise.all([rowsQuery, countQuery, queryActiveFx()]);
+  return { rows, total: Number(count?.total ?? 0), fxVersion: fx?.version ?? null };
+}
+
+/**
+ * Every row matching the directory's search, filters and sort, ignoring paging,
+ * for export. Capped so a mistake can never stream an unbounded result.
+ */
+export async function queryEmployeeDirectoryExport(
+  query: EmployeeListQuery,
+  maxRows: number,
+): Promise<{ rows: DirectoryRow[]; fxVersion: string | null }> {
+  const [rows, fx] = await Promise.all([
+    prisma.$queryRaw<DirectoryRow[]>`
+      ${directorySelect(query, whereClause(query))}
+      LIMIT ${maxRows}`,
+    queryActiveFx(),
+  ]);
+  return { rows, fxVersion: fx?.version ?? null };
+}
+
+function directorySelect(query: EmployeeListQuery, where: Prisma.Sql): Prisma.Sql {
+  const direction = query.order === "desc" ? Prisma.sql`DESC` : Prisma.sql`ASC`;
+  return Prisma.sql`
     WITH ${activeFxVersionCte}
     SELECT
       e.id, e.employee_code, e.first_name, e.last_name, e.email, e.job_title,
@@ -67,14 +96,7 @@ export async function queryEmployeeDirectory(
       ON r.currency_code = e.salary_currency
      AND r.version = (SELECT version FROM active_fx)
     ${where}
-    ORDER BY ${ORDER_BY[query.sort]} ${direction} NULLS LAST, e.id ${direction}
-    LIMIT ${query.pageSize} OFFSET ${offset}`;
-
-  const countQuery = prisma.$queryRaw<{ total: bigint }[]>`
-    SELECT COUNT(*) AS total FROM employees e ${where}`;
-
-  const [rows, [count], fx] = await Promise.all([rowsQuery, countQuery, queryActiveFx()]);
-  return { rows, total: Number(count?.total ?? 0), fxVersion: fx?.version ?? null };
+    ORDER BY ${ORDER_BY[query.sort]} ${direction} NULLS LAST, e.id ${direction}`;
 }
 
 function whereClause(query: EmployeeListQuery): Prisma.Sql {

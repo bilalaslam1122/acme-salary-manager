@@ -53,3 +53,13 @@ export function filtersOf(query: InsightsPageQuery): EmployeeFilters {
 export function hasFilters(query: InsightsPageQuery): boolean {
   return Boolean(query.countryCode || query.departmentId || query.jobTitle);
 }
+
+/** CSV of the "Salary by…" table for the current grouping and filters. */
+export function insightsExportHref(query: InsightsPageQuery): string {
+  const params = new URLSearchParams({ groupBy: query.groupBy });
+  const filters = filtersOf(query);
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  }
+  return `/api/insights/by-group/export?${params}`;
+}

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { filtersOf, hasFilters, insightsHref, parseInsightsQuery } from "./insights-url";
+import {
+  filtersOf,
+  hasFilters,
+  insightsExportHref,
+  insightsHref,
+  parseInsightsQuery,
+} from "./insights-url";
 
 describe("parseInsightsQuery", () => {
   it("defaults to grouping by country with no filters", () => {
@@ -46,5 +52,20 @@ describe("filtersOf / hasFilters", () => {
     });
     expect(hasFilters(query)).toBe(true);
     expect(hasFilters(parseInsightsQuery({ groupBy: "department" }))).toBe(false);
+  });
+});
+
+describe("insightsExportHref", () => {
+  it("always names the grouping, even the default one", () => {
+    expect(insightsExportHref(parseInsightsQuery({}))).toBe(
+      "/api/insights/by-group/export?groupBy=country",
+    );
+  });
+
+  it("carries the filters that scope the table", () => {
+    const query = parseInsightsQuery({ groupBy: "jobTitle", countryCode: "IN" });
+    expect(insightsExportHref(query)).toBe(
+      "/api/insights/by-group/export?groupBy=jobTitle&countryCode=IN",
+    );
   });
 });

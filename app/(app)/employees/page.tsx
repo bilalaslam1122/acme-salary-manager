@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { ExportLink } from "@/components/common/export-link";
 import { Pagination } from "@/components/common/pagination";
 import { DirectorySkeleton } from "@/components/employees/directory-skeleton";
 import { DirectoryTable } from "@/components/employees/directory-table";
@@ -8,7 +9,11 @@ import { EmployeeSheet } from "@/components/employees/employee-sheet";
 import { Card } from "@/components/ui/card";
 import { listEmployees } from "@/lib/services/employee-directory";
 import { getReferenceData } from "@/lib/services/reference";
-import { directoryHref, parseDirectoryQuery } from "@/lib/validation/directory-url";
+import {
+  directoryExportHref,
+  directoryHref,
+  parseDirectoryQuery,
+} from "@/lib/validation/directory-url";
 
 export const metadata: Metadata = { title: "Employees · ACME Salary Manager" };
 
@@ -43,7 +48,14 @@ async function Directory({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <DirectoryToolbar query={query} reference={reference} />
-        <EmployeeSheet reference={reference} />
+        <div className="flex gap-2">
+          <ExportLink
+            href={directoryExportHref(query)}
+            label="Export these employees as CSV"
+            disabled={result.meta.total === 0}
+          />
+          <EmployeeSheet reference={reference} />
+        </div>
       </div>
       <p className="text-sm text-muted-foreground" aria-live="polite">
         {countFormat.format(result.meta.total)}{" "}

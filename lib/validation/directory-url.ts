@@ -74,3 +74,12 @@ export function statusHref(query: EmployeeListQuery, status: EmployeeStatus): st
         : {};
   return directoryHref(query, { status, ...sortOverrides, page: 1 });
 }
+
+/** CSV of the current view: same search, filters, status and sort, without paging. */
+export function directoryExportHref(query: EmployeeListQuery): string {
+  const view = directoryHref(query, {
+    page: DEFAULTS.page,
+    pageSize: DEFAULTS.pageSize,
+  });
+  return view.replace("/employees", "/api/employees/export");
+}
