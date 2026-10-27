@@ -7,9 +7,9 @@ questions such as _"what's the median salary for engineers in India?"_ or _"how 
 a Software Engineer's pay compare across countries in USD?"_ in two clicks or fewer
 from the Insights page (one filter, one tab).
 
-**Live demo:** https://acme-salary-manager-jade.vercel.app (sign in as
-`hr@acme.example`; the password is shared with the submission). It runs the
-deterministic seed: 10,000 active and 400 former employees.
+**Live demo:** https://acme-salary-manager-jade.vercel.app. Click **Explore the
+live demo** on the sign-in page: no credentials needed. It runs the deterministic
+seed (10,000 active and 400 former employees), shared by every visitor.
 
 The specs that drove the build live in [`context/`](context/). Start with the
 one-page [project overview](context/project-overview.md).
@@ -232,6 +232,10 @@ us-east-1, so each query stays in one region.
 - `SESSION_SECRET` is a separate random value in production. The HR Manager
   password is set when seeding production and is not the one in `.env.example`.
 - `vercel.json` pins the Next.js preset and the region.
+- `DEMO_LOGIN=true` turns on the one-click demo sign-in (AD-43). It signs in as a
+  separate demo account whose password is random and never stored, so the real HR
+  Manager login stays private. Changes made through the demo account don't block
+  a re-seed, so the shared demo can always be reset.
 
 ## Known limitations
 

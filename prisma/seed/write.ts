@@ -1,3 +1,4 @@
+import { DEMO_USER } from "../../lib/auth/demo";
 import type { PrismaClient } from "../../lib/db/generated/prisma/client";
 import type { Dataset } from "./generate";
 
@@ -19,14 +20,16 @@ type Executor = Pick<PrismaClient, "$executeRawUnsafe">;
 
 /**
  * Changes made by a signed-in user (as opposed to the seed's system rows). A reset
- * would destroy this real HR work, so the seed refuses unless forced.
+ * would destroy this real HR work, so the seed refuses unless forced. Changes by the
+ * public demo account are throwaway by design and do not count.
  */
 export async function countUserMadeChanges(
   db: Pick<PrismaClient, "salaryHistory" | "employeeEvent">,
 ): Promise<number> {
+  const byRealUser = { changedBy: { is: { email: { not: DEMO_USER.email } } } };
   const [salaryChanges, events] = await Promise.all([
-    db.salaryHistory.count({ where: { changedById: { not: null } } }),
-    db.employeeEvent.count({ where: { changedById: { not: null } } }),
+    db.salaryHistory.count({ where: byRealUser }),
+    db.employeeEvent.count({ where: byRealUser }),
   ]);
   return salaryChanges + events;
 }

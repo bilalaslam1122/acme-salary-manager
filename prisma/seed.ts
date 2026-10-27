@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { createPrismaClient } from "../lib/db/create-client";
 import { parseEnv, parseSeedAdminEnv } from "../lib/env";
-import { upsertAdminUser } from "./seed/admin";
+import { upsertAdminUser, upsertDemoUser } from "./seed/admin";
 import { generateDataset } from "./seed/generate";
 import { countUserMadeChanges, writeDataset } from "./seed/write";
 
@@ -21,6 +21,7 @@ async function main(): Promise<void> {
     const dataset = generateDataset();
     await writeDataset(prisma, dataset);
     const user = await upsertAdminUser(prisma, admin);
+    await upsertDemoUser(prisma);
     const seconds = ((performance.now() - started) / 1000).toFixed(1);
     const active = dataset.employees.filter((e) => e.terminatedAt === null).length;
     console.log(

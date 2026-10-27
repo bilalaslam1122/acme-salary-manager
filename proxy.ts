@@ -4,7 +4,12 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/session";
 // First line of defence for Invariant 9. Route handlers verify again with
 // requireSession(), so a matcher mistake cannot expose data on its own.
 
-const PUBLIC_PATHS = new Set(["/login", "/api/auth/login", "/api/auth/logout"]);
+const PUBLIC_PATHS = new Set([
+  "/login",
+  "/api/auth/login",
+  "/api/auth/logout",
+  "/api/auth/demo",
+]);
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname, search } = request.nextUrl;

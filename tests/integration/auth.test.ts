@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as login } from "@/app/api/auth/login/route";
 import { POST as logout } from "@/app/api/auth/logout/route";
 import { GET as getHistory } from "@/app/api/employees/[id]/history/route";
@@ -17,7 +17,9 @@ import { GET as getDistribution } from "@/app/api/insights/distribution/route";
 import { GET as getSummary } from "@/app/api/insights/summary/route";
 import { verifyPassword } from "@/lib/auth/password";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/session";
-import { upsertAdminUser } from "@/prisma/seed/admin";
+import { POST as demoLogin } from "@/app/api/auth/demo/route";
+import { DEMO_USER } from "@/lib/auth/demo";
+import { upsertAdminUser, upsertDemoUser } from "@/prisma/seed/admin";
 import { authed, signIn } from "./auth";
 import { testPrisma } from "./db";
 import { employeePayload, seedReferenceData } from "./factories";
@@ -110,6 +112,54 @@ describe("POST /api/auth/login", () => {
   it("returns 400 for a malformed body", async () => {
     const response = await login(loginRequest({ email: "not-an-email" }));
     expect(response.status).toBe(400);
+  });
+});
+
+describe("POST /api/auth/demo", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("returns 404 and sets no cookie unless DEMO_LOGIN=true", async () => {
+    await upsertDemoUser(testPrisma);
+
+    const response = await demoLogin();
+
+    expect(response.status).toBe(404);
+    expect(sessionCookieFrom(response)).toBeUndefined();
+  });
+
+  it("signs in as the demo account when enabled", async () => {
+    vi.stubEnv("DEMO_LOGIN", "true");
+    await upsertDemoUser(testPrisma);
+
+    const response = await demoLogin();
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).data.user).toMatchObject({
+      email: DEMO_USER.email,
+      name: DEMO_USER.name,
+    });
+    const cookie = sessionCookieFrom(response)!;
+    const token = cookie.split(";")[0]!.slice(`${SESSION_COOKIE}=`.length);
+    expect((await verifySessionToken(token))?.email).toBe(DEMO_USER.email);
+  });
+
+  it("returns 404 when enabled but the demo account was never seeded", async () => {
+    vi.stubEnv("DEMO_LOGIN", "true");
+    expect((await demoLogin()).status).toBe(404);
+  });
+
+  it("gives the demo account a password nobody knows", async () => {
+    await upsertDemoUser(testPrisma);
+
+    const response = await login(loginRequest({ email: DEMO_USER.email, password: "" }));
+    const guess = await login(
+      loginRequest({ email: DEMO_USER.email, password: "demo-password-guess" }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(guess.status).toBe(401);
   });
 });
 

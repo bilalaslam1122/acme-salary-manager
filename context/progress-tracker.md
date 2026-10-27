@@ -579,6 +579,16 @@ Resolved:
   silently.** The USD aggregates must exclude them, but the summary returns
   `excludedWithoutFx` and the Insights page shows a warning, so headcount never
   disagrees with the directory without explanation.
+- **AD-43: The public demo signs in with one click, as a separate demo account.**
+  Reviewers should not need credentials passed around, and the real HR Manager
+  password should not be published. The seed creates `demo@acme.example` with a
+  random password that is hashed and discarded, so the normal login form can never
+  open it. `POST /api/auth/demo` issues a session for it, and only exists when
+  `DEMO_LOGIN=true` (404 otherwise; off by default). The data is shared, so the
+  page says so, and the seed's guard ignores demo-account changes so the demo can
+  always be reset.
+  *Alternative:* print demo credentials on the login page. It is the same access
+  with more friction, and anyone could change the password-bearing account.
 
 ## AI Prompts Log
 

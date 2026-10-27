@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+import { DEMO_USER } from "../../lib/auth/demo";
 import { hashPassword } from "../../lib/auth/password";
 import type { SeedAdminEnv } from "../../lib/env";
 import type { PrismaClient } from "../../lib/db/generated/prisma/client";
@@ -16,6 +18,22 @@ export async function upsertAdminUser(
     where: { email: admin.SEED_ADMIN_EMAIL },
     create: { email: admin.SEED_ADMIN_EMAIL, name: admin.SEED_ADMIN_NAME, passwordHash },
     update: { name: admin.SEED_ADMIN_NAME, passwordHash },
+    select: { id: true, email: true },
+  });
+}
+
+/**
+ * Creates the demo HR account behind the one-click demo sign-in. Its password is
+ * random and discarded, so it can never be used through the normal login form.
+ */
+export async function upsertDemoUser(
+  prisma: PrismaClient,
+): Promise<{ id: number; email: string }> {
+  const passwordHash = await hashPassword(randomBytes(32).toString("base64"));
+  return prisma.user.upsert({
+    where: { email: DEMO_USER.email },
+    create: { ...DEMO_USER, passwordHash },
+    update: { name: DEMO_USER.name, passwordHash },
     select: { id: true, email: true },
   });
 }

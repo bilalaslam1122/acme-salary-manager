@@ -47,7 +47,7 @@ describe("proxy without a session", () => {
     expect(response.status).toBe(401);
   });
 
-  it.each(["/login", "/api/auth/login", "/api/auth/logout"])(
+  it.each(["/login", "/api/auth/login", "/api/auth/logout", "/api/auth/demo"])(
     "lets %s through",
     async (path) => {
       expect(passedThrough(await proxy(request(path)))).toBe(true);

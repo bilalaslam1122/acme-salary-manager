@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { generateDataset } from "@/prisma/seed/generate";
+import { DEMO_USER } from "@/lib/auth/demo";
 import { countUserMadeChanges, writeDataset } from "@/prisma/seed/write";
 import { resetDatabase, testPrisma } from "./db";
 
@@ -80,5 +81,22 @@ describe("writeDataset", () => {
     });
 
     expect(await countUserMadeChanges(testPrisma)).toBe(2);
+  });
+
+  it("does not count changes made through the public demo account", async () => {
+    await writeDataset(testPrisma, dataset);
+    const demo = await testPrisma.user.create({
+      data: { ...DEMO_USER, passwordHash: "unused" },
+    });
+    await testPrisma.employeeEvent.create({
+      data: {
+        employeeId: dataset.employees[0]!.id!,
+        type: "UPDATED",
+        changedById: demo.id,
+        changedAt: new Date(),
+      },
+    });
+
+    expect(await countUserMadeChanges(testPrisma)).toBe(0);
   });
 });
