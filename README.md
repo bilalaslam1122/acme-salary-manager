@@ -65,7 +65,10 @@ npm run db:seed               # 10,000 employees + the HR Manager login (~5 s, r
 npm run dev                   # http://localhost:3000
 ```
 
-Sign in with `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` from your `.env`.
+Click **Explore the live demo** on the sign-in page to go straight in as the demo
+HR Manager, exactly as on the live site, or sign in with `SEED_ADMIN_EMAIL` and
+`SEED_ADMIN_PASSWORD` from your `.env`. Set `DEMO_LOGIN="false"` to hide the demo
+button.
 
 `npm run db:seed` replaces all data. It refuses to run against a database that
 holds changes made by HR users (salary changes or audit events), so it can't wipe
@@ -232,7 +235,8 @@ us-east-1, so each query stays in one region.
 - `SESSION_SECRET` is a separate random value in production. The HR Manager
   password is set when seeding production and is not the one in `.env.example`.
 - `vercel.json` pins the Next.js preset and the region.
-- `DEMO_LOGIN=true` turns on the one-click demo sign-in (AD-43). It signs in as a
+- `DEMO_LOGIN=true` turns on the one-click demo sign-in (AD-43), as it is locally
+  by default. It signs in as a
   separate demo account whose password is random and never stored, so the real HR
   Manager login stays private. Changes made through the demo account don't block
   a re-seed, so the shared demo can always be reset.
