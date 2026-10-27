@@ -7,6 +7,7 @@ import {
 } from "@/lib/services/employees";
 import { listSalaryHistory } from "@/lib/services/salary-history";
 import { createEmployeeSchema } from "@/lib/validation/employee";
+import { authed, signIn } from "./auth";
 import { testPrisma } from "./db";
 import { employeePayload, seedReferenceData } from "./factories";
 
@@ -31,6 +32,7 @@ function historyRows(employeeId: number) {
 
 beforeEach(async () => {
   await seedReferenceData();
+  await signIn();
 });
 
 describe("listSalaryHistory", () => {
@@ -161,7 +163,7 @@ describe("salary writes are atomic (Invariant 5)", () => {
 describe("GET /api/employees/[id]/history", () => {
   const ctx = (id: string | number) => ({ params: Promise.resolve({ id: String(id) }) });
   const request = (query = "") =>
-    new Request(`http://localhost/api/employees/1/history${query}`);
+    authed(`http://localhost/api/employees/1/history${query}`);
 
   it("returns data and pagination meta", async () => {
     const employee = await createGbEmployee();

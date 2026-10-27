@@ -53,6 +53,12 @@
 
 - Parse the input first. Run `schema.safeParse()` on the body and query, and return
   `400` on failure before any other logic runs.
+- Every protected handler starts with `await requireSession(request)`, and takes
+  `actorId` for audited writes from the returned session, never from the body. Only
+  `/api/auth/login` and `/api/auth/logout` skip it. The 401 sweep in
+  `tests/integration/auth.test.ts` must list every protected handler.
+- Validate emails with the shared `emailSchema` (`lib/validation/common.ts`), which
+  trims and lowercases before validating. Zod 4's `z.email().trim()` validates first.
 - Enforce auth before any read or mutation. `proxy.ts` is the first line of defence,
   and handlers also call `requireSession()`.
 - Use a consistent response shape:

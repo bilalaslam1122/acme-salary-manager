@@ -19,6 +19,11 @@ export class ConflictError extends DomainError {
   readonly code = "CONFLICT";
 }
 
+/** Missing/invalid session, or wrong credentials (deliberately not saying which). */
+export class UnauthorizedError extends DomainError {
+  readonly code = "UNAUTHORIZED";
+}
+
 /** A business rule rejected otherwise well-formed input. `details` maps field → message. */
 export class ValidationError extends DomainError {
   readonly code = "VALIDATION_ERROR";

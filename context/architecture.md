@@ -30,6 +30,9 @@
   throws typed domain errors.
 - `lib/db/` — The Prisma client singleton and raw-SQL query modules, such as the
   aggregation queries. This is the only place `PrismaClient` and `$queryRaw` are used.
+- `lib/auth/` — Session tokens (`jose`), password hashing (`bcryptjs`) and
+  `requireSession`. It has no database access, so `proxy.ts` can import it.
+- `proxy.ts` (repo root) — The first auth layer for every page and API.
 - `lib/validation/` — Zod schemas and their inferred types. The API and the forms
   share these schemas.
 - `lib/money/` — Pure helpers for minor-unit conversion, formatting, and FX
@@ -48,9 +51,10 @@
 flowchart LR
   Browser -->|HTML / RSC| Pages["app/ (server components)"]
   Browser -->|fetch JSON| API["app/api/* route handlers"]
-  MW["proxy.ts: session check"] -.guards.-> Pages
+  MW["proxy.ts: session check (layer 1)"] -.guards.-> Pages
   MW -.guards.-> API
   Pages --> Services["lib/services/*"]
+  API -->|requireSession, layer 2| Auth["lib/auth/*"]
   API -->|Zod parse| Validation["lib/validation/*"]
   API --> Services
   Services --> Money["lib/money/*"]
@@ -150,17 +154,31 @@ the app records the signed-in user. Every foreign key uses `ON DELETE RESTRICT`
 
 ## Auth and Access Model
 
-- There is exactly one user, the HR Manager, created by the seed from the
-  `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` environment variables. The password is
-  stored as a bcrypt hash. The app has no sign-up page.
-- `POST /api/auth/login` checks the credentials and sets a signed JWT (HS256, secret
-  `SESSION_SECRET`, 8-hour expiry) in an `HttpOnly`, `Secure`, `SameSite=Lax`
-  cookie. `POST /api/auth/logout` clears the cookie.
-- Next.js `proxy.ts` (Next 16's replacement for `middleware.ts`) verifies the cookie on every request except `/login`,
-  `/api/auth/login` and static assets. Pages without a valid session redirect to
-  `/login`. APIs return `401 { error }`.
+- There is exactly one user, the HR Manager. The seed creates or updates it from the
+  `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` (at least 12 characters) and
+  `SEED_ADMIN_NAME` environment variables. The password is stored as a bcrypt hash
+  (cost 12). The app has no sign-up page.
+- `POST /api/auth/login` checks the credentials and sets a signed JWT in the
+  `acme_session` cookie.
+  - The JWT is HS256, signed with `SESSION_SECRET` (at least 32 characters), and
+    expires after 8 hours.
+  - The cookie is `HttpOnly` and `SameSite=Lax`, plus `Secure` in production.
+  - Wrong password and unknown email return the same 401. Unknown emails still run a
+    bcrypt comparison, so timing does not reveal which emails exist.
+- `POST /api/auth/logout` expires the cookie.
+- Two layers enforce Invariant 9:
+  1. `proxy.ts` (Next 16's replacement for `middleware.ts`) runs on every path
+     except Next internals and files with an extension. `/login`, `/api/auth/login`
+     and `/api/auth/logout` are public. Without a valid session, pages redirect to
+     `/login?next=<path>` and APIs return `401 { error }`. A signed-in user visiting
+     `/login` is redirected to `/`.
+  2. Every protected route handler calls `requireSession(request)`, which reads the
+     Cookie header. This is the second line of defence the Next.js docs recommend,
+     and it is where `actorId` comes from.
 - The signed-in user can do everything. The user's id is recorded as `changedById` on
   SalaryHistory.
+- Login has no rate limiting. With a single internal user it is out of scope, and it
+  would be added with a deployment-level limit such as Vercel firewall rules.
 
 ## Invariants
 

@@ -25,6 +25,11 @@ describe("createEmployeeSchema", () => {
     expect(parsed.countryCode).toBe("GB");
   });
 
+  it("accepts an email with surrounding whitespace (trimmed before validation)", () => {
+    const parsed = createEmployeeSchema.parse({ ...valid, email: "  ada@acme.example " });
+    expect(parsed.email).toBe("ada@acme.example");
+  });
+
   it("parses hireDate as a UTC midnight date", () => {
     const parsed = createEmployeeSchema.parse(valid);
     expect(parsed.hireDate.toISOString()).toBe("2024-03-01T00:00:00.000Z");

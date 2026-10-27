@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { GET } from "@/app/api/employees/route";
 import { listEmployees } from "@/lib/services/employee-directory";
 import { employeeListQuerySchema } from "@/lib/validation/employee-list";
+import { authed, signIn } from "./auth";
 import { departmentId, insertEmployee, seedReferenceData } from "./factories";
 
 function list(query: Record<string, string> = {}) {
@@ -14,6 +15,7 @@ function lastNames(result: Awaited<ReturnType<typeof list>>) {
 
 beforeEach(async () => {
   await seedReferenceData();
+  await signIn();
 });
 
 describe("listEmployees pagination", () => {
@@ -187,7 +189,7 @@ describe("GET /api/employees", () => {
   it("returns data and meta", async () => {
     await insertEmployee();
 
-    const response = await GET(new Request("http://localhost/api/employees?pageSize=10"));
+    const response = await GET(authed("http://localhost/api/employees?pageSize=10"));
 
     expect(response.status).toBe(200);
     const body = await response.json();
@@ -196,9 +198,7 @@ describe("GET /api/employees", () => {
   });
 
   it("returns 400 for an invalid sort field", async () => {
-    const response = await GET(
-      new Request("http://localhost/api/employees?sort=password"),
-    );
+    const response = await GET(authed("http://localhost/api/employees?sort=password"));
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.details.fieldErrors).toHaveProperty("sort");

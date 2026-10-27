@@ -4,12 +4,12 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 6, salary history read API: complete. Phase 7 is next.
+- Phase 7, HR Manager auth: complete. The backend is complete. Phase 8 (UI) is next.
 
 ## Current Goal
 
-- Phase 7: HR Manager auth: the seeded user, the login and logout API, the session
-  cookie, and `proxy.ts`, with tests.
+- Phase 8: UI: the app shell, the login page, and the employee directory table with
+  URL-driven filters.
 
 ## Completed
 
@@ -84,6 +84,26 @@ Update this file after every meaningful implementation change.
         - Concurrent edits keep the history chain consistent. A mutation check
           showed that removing `FOR UPDATE` fails the test in 3 of 5 runs, and it
           passes 5 of 5 with the lock.
+- [x] Phase 7:
+      - Login and logout APIs, with a stateless HS256 JWT in the HttpOnly
+        `acme_session` cookie (8 h).
+      - The seed upserts the HR Manager from `SEED_ADMIN_*`, with a bcrypt cost-12
+        hash.
+      - `proxy.ts` is the first layer: pages redirect to `/login?next=`, and APIs
+        return 401.
+      - `requireSession(request)` in every protected handler is the second layer, and
+        supplies `actorId`. The Phase 3 `TODO(phase-7)` placeholders were removed.
+      - The env is split per consumer (DB, auth, seed admin).
+      - Fixed a Phase 3 bug: `z.email().trim()` validated before trimming. There is
+        now a shared `emailSchema`.
+      - 51 new tests, covering:
+        - token round-trip, expiry, tampering and a foreign secret;
+        - cookie parsing;
+        - proxy redirect and 401 behaviour, and the matcher;
+        - login success, identical 401s, logout, and admin upsert;
+        - a 401 sweep over all 9 protected handlers (mutation-checked);
+        - audit attribution through the API.
+      - Smoke-tested 10 checks with `curl` against `next start`.
 
 ## In Progress
 
@@ -110,7 +130,7 @@ Each bullet is one verifiable unit and one commit.
       (`GET /api/employees/[id]/history`, newest first, paginated) plus explicit
       rollback tests. The transactional write moved into Phase 3, so Invariant 5
       holds from the first salary write.
-- [ ] **Phase 7:** `feat:` HR Manager auth: seeded user, login and logout API, session
+- [x] **Phase 7:** `feat:` HR Manager auth: seeded user, login and logout API, session
       cookie, and `proxy.ts` (+ tests).
 - [ ] **Phase 8:** `feat:` UI: the app shell, login page, and employee directory table
       with URL-driven filters.
@@ -321,6 +341,22 @@ Resolved:
   in the service (a presentation value, not aggregation). It is withheld across
   currencies, because a GBP→JPY "percent" would be meaningless. Order is
   `changedAt DESC, id DESC`, so changes on the same timestamp keep a stable order.
+- **AD-26: Two-layer auth, with `requireSession(request)` reading the Cookie header.**
+  - `proxy.ts` gives a fast, uniform redirect or 401. The Next.js docs warn that the
+    proxy alone is not enough (matcher drift), so every handler verifies again.
+  - Reading the header from the `Request`, instead of `cookies()` from
+    `next/headers`, keeps handlers testable outside a Next request scope, with no
+    mocking.
+  - `lib/auth` has no DB access, so the proxy never touches Prisma.
+  *Alternative:* a DB session table, rejected for the same reasons as AD-9.
+- **AD-27: The env is validated per consumer.** `env()` covers the database,
+  `authEnv()` the session secret, and `parseSeedAdminEnv` the seed admin. The proxy
+  doesn't need `DATABASE_URL`, and the seed doesn't need `SESSION_SECRET`. Tests use
+  a fixed test-only secret from `vitest.config.mts`, not the developer's `.env`.
+- **AD-28: The admin user is seeded outside `generateDataset`.** bcrypt salts make
+  the hash differ on every run, so the `users` row is the one documented exception to
+  the byte-identical seed. `upsertAdminUser` is idempotent and rotates the password
+  on re-run.
 
 ## AI Prompts Log
 
@@ -334,6 +370,7 @@ Resolved:
 | 6 | 2026-10-26 | "sure" (confirm assumptions 9–12, then Phase 4) | Before writing tests, the AI ran EXPLAIN ANALYZE against the 10k dev data to confirm index use and timings. It used hand-computed USD expectations (for example £50,000 × 1.27 = $63,500) to verify the conversion across GBP, USD, JPY (exponent 0) and INR. The performance test was run verbose to record the real timings, not just a pass. An SQL-injection-style `sort` value is covered by a test. |
 | 7 | 2026-10-26 | "continue" (Phase 5) | The insights SQL was verified two independent ways: hand-computed fixtures across GBP, USD, JPY and INR (including an even-count median), and a JS calculation over 300 generated employees compared against the SQL output. Self-review caught one weak test: the "≤ 20 buckets" case never triggered the clamp. It was replaced with an input that produces 21 buckets without the clamp. The build log exposed a bug from Phase 3: `handle()` caught Next's prerender bail-out error and logged it as a 500. It was fixed with `unstable_rethrow`, verified by a test using `notFound()`, and mutation-checked. The Phase 4 commit had also been made while an overlapping build was failing; from now on, the build must be clean before every commit. The shared filter SQL was extracted, and the existing directory tests were the safety net for that refactor. |
 | 8 | 2026-10-27 | "start where you left off" (new session, Phase 6) | The AI reread the context files and the git state first. Rollback was tested with a realistic failure (a broken `changed_by_id` FK) rather than a mock. The concurrency test was proven meaningful by mutation: without `FOR UPDATE` it fails in 3 of 5 runs, and with the lock it passes 5 of 5. The build is confirmed clean before committing. |
+| 9 | 2026-10-27 | "continue" (Phase 7, auth) | The AI read the Next 16 `proxy.md` first (Node runtime, matcher syntax, and the docs' advice not to rely on the proxy alone), which led to the two-layer design (AD-26). A new env test exposed a real Phase 3 bug: Zod 4's `z.email().trim()` validates before trimming. It was fixed in all 3 schemas, with a regression test. A mutation check (removing `requireSession` from one route) confirmed the 401 sweep catches it. Beyond the unit tests, it ran a 10-step `curl` smoke test against `next start`: redirects, 401s, cookie flags, login, logout and static assets. The generated dev password went only into the gitignored `.env` and was never printed. |
 
 ## Session Notes
 

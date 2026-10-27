@@ -5,6 +5,9 @@ import { defineConfig } from "vitest/config";
 
 const emptyModule = fileURLToPath(new URL("./tests/empty-module.ts", import.meta.url));
 
+// Fixed, test-only secret so session tests never depend on a developer's .env.
+const TEST_SESSION_SECRET = "test-session-secret-not-used-anywhere-else-0123456789";
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -19,7 +22,8 @@ export default defineConfig({
         test: {
           name: "unit",
           environment: "node",
-          include: ["{lib,prisma,app}/**/*.test.ts"],
+          include: ["{lib,prisma,app}/**/*.test.ts", "*.test.ts"],
+          env: { SESSION_SECRET: TEST_SESSION_SECRET },
         },
       },
       {
@@ -43,6 +47,7 @@ export default defineConfig({
           env: {
             NODE_ENV: "test",
             DATABASE_URL: process.env.TEST_DATABASE_URL ?? "",
+            SESSION_SECRET: TEST_SESSION_SECRET,
           },
           testTimeout: 30_000,
         },

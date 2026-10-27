@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { DELETE, GET, PATCH } from "@/app/api/employees/[id]/route";
 import { POST } from "@/app/api/employees/route";
+import { authed, signIn } from "./auth";
 import { employeePayload, seedReferenceData } from "./factories";
 
 function request(method: string, body?: unknown): Request {
-  return new Request("http://localhost/api/employees", {
+  return authed("http://localhost/api/employees", {
     method,
     headers: { "content-type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -22,6 +23,7 @@ async function createViaApi(overrides: Record<string, unknown> = {}) {
 
 beforeEach(async () => {
   await seedReferenceData();
+  await signIn();
 });
 
 describe("POST /api/employees", () => {

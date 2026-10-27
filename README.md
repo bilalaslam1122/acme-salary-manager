@@ -11,14 +11,16 @@ Salary management and pay insights for ACME's HR Manager. The specs live in
 ## Setup
 
 ```bash
-cp .env.example .env          # set DATABASE_URL and TEST_DATABASE_URL
+cp .env.example .env          # set the database URLs, SESSION_SECRET and SEED_ADMIN_*
 createdb acme_salary
 createdb acme_salary_test
 npm install                   # also generates the Prisma client
 npm run db:migrate            # apply migrations to the dev database
-npm run db:seed               # 10,000 deterministic employees (~5s, replaces all data)
+npm run db:seed               # 10,000 employees + the HR Manager login (~5s, replaces all data)
 npm run dev
 ```
+
+Sign in with `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` from your `.env`.
 
 ## Scripts
 

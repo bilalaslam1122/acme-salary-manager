@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { emailSchema } from "./common";
 
 /** Keeps salary_minor inside a Postgres int4 (see AD-1). */
 export const MAX_SALARY_MINOR = 2_000_000_000;
@@ -23,7 +24,7 @@ export const employeeIdSchema = z.coerce
 export const createEmployeeSchema = z.strictObject({
   firstName: name,
   lastName: name,
-  email: z.email().trim().toLowerCase().max(254),
+  email: emailSchema,
   jobTitle: name,
   departmentId: z.number().int().positive(),
   countryCode: z

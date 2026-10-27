@@ -1,7 +1,13 @@
 import { unstable_rethrow } from "next/navigation";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { ConflictError, DomainError, NotFoundError, ValidationError } from "@/lib/errors";
+import {
+  ConflictError,
+  DomainError,
+  NotFoundError,
+  UnauthorizedError,
+  ValidationError,
+} from "@/lib/errors";
 
 export interface ErrorBody {
   error: { code: string; message: string; details?: unknown };
@@ -71,6 +77,9 @@ export function toErrorResponse(error: unknown): NextResponse<ErrorBody> {
     return errorResponse(400, error.code, error.message, {
       fieldErrors: error.fieldErrors,
     });
+  }
+  if (error instanceof UnauthorizedError) {
+    return errorResponse(401, error.code, error.message);
   }
   if (error instanceof NotFoundError) {
     return errorResponse(404, error.code, error.message);

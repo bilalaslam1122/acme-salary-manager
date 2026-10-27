@@ -10,6 +10,7 @@ import {
 import { generateDataset } from "@/prisma/seed/generate";
 import { COUNTRIES, USD_PER_UNIT_MICROS } from "@/prisma/seed/reference-data";
 import { writeDataset } from "@/prisma/seed/write";
+import { authed, signIn } from "./auth";
 import { testPrisma } from "./db";
 import { departmentId, insertEmployee, seedReferenceData } from "./factories";
 
@@ -42,6 +43,7 @@ async function insertFixture() {
 
 beforeEach(async () => {
   await seedReferenceData();
+  await signIn();
 });
 
 describe("getSalarySummary", () => {
@@ -181,7 +183,7 @@ describe("insights API", () => {
   beforeEach(insertFixture);
 
   const get = (handler: (r: Request) => Promise<Response>, query: string) =>
-    handler(new Request(`http://localhost/api/insights?${query}`));
+    handler(authed(`http://localhost/api/insights?${query}`));
 
   it("GET /api/insights/summary returns data and FX meta", async () => {
     const response = await get(getSummary, "countryCode=us");
