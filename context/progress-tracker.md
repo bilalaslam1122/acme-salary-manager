@@ -4,7 +4,8 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 11, polish, performance and README: complete. Phase 12 (deployment) is next.
+- Phase 11b, hardening after a self-review against the brief: complete. Phase 12
+  (deployment) is in progress.
 
 ## Current Goal
 
@@ -237,6 +238,17 @@ Each bullet is one verifiable unit and one commit.
 - [x] **Phase 10:** `feat:` UI: the insights dashboard with stat cards and charts.
 - [x] **Phase 11:** `chore:` Polish the empty, error and loading states, verify the
       performance goals at 10k, and write the README.
+- [x] **Phase 11b:** Hardening after reviewing the build against the brief, one
+      commit each:
+      - `fix(directory):` an Active / Terminated / All status filter replaces the
+        "show terminated" switch, and the seed adds 400 former employees (AD-36).
+      - `feat(employees):` an audit trail for non-salary changes, terminations and
+        reinstatements, plus reinstate (AD-37, AD-38).
+      - `feat(export):` CSV export of the directory and the insights table (AD-39).
+      - `test:` latency budgets moved out of `npm test` (AD-40).
+      - `fix(seed):` the seed refuses to wipe real HR changes (AD-41).
+      - `fix(insights):` employees without an FX rate are counted, not silently
+        dropped (AD-42).
 - [ ] **Phase 12:** `chore:` Deploy, seed production, and write the demo script for
       the video.
 
@@ -251,8 +263,9 @@ Resolved:
 9. **Employee code:** server-generated as `ACME-{id:05}`. HR cannot enter their
    existing codes from Excel. Changing this would be a small, additive change if
    needed.
-10. **Terminated employees are read-only.** Editing or re-terminating one returns 409,
-    and no reinstate action exists.
+10. **Terminated employees are read-only.** Editing or re-terminating one returns 409.
+    *Revised in Phase 11b:* a terminated employee can now be reinstated (with a
+    reason), because a mistaken termination with no undo is a real HR risk (AD-37).
 11. **Hire date:** any valid calendar date is accepted, including a future date for
     planned hires. No other restriction is defined.
 12. **Salary change reason:** optional, and only allowed when the salary actually
@@ -519,40 +532,84 @@ Resolved:
   band) is unit-tested, and the chart components are rendered with a fixed-size
   container stand-in to check their real configuration. One vacuous test (it
   claimed to check bar order but asserted nothing) was deleted rather than kept.
+- **AD-36: The directory filters by employment status instead of toggling
+  "include terminated".** The switch mixed leavers into the active list sorted by
+  name, so with one leaver among 10,000 rows it looked broken. Real HR questions
+  are "who is here now", "who left recently" and occasionally "everyone", so the
+  filter is Active / Terminated / All, and the Terminated view sorts by the new
+  "Left on" column, newest first. The seed adds 400 former employees (4%
+  attrition) after the 10,000 active ones, so the active dataset and its ids are
+  unchanged and the view has realistic data.
+  *Alternative:* keep the switch and pin terminated rows to the top. That is
+  still a mixed list, and it breaks every sort.
+- **AD-37: Non-salary changes get their own audit table, `employee_events`.**
+  SalaryHistory stays as it is, since its shape (old and new amount, currencies,
+  % change) is specific to money. EmployeeEvent records UPDATED (a JSON map of
+  field to from/to), TERMINATED and REINSTATED, with the actor, a timestamp and,
+  for terminate/reinstate, a required reason. Field changes store display values
+  (department and country names), so the trail still reads correctly after a
+  rename. A salary edit writes only SalaryHistory, so nothing is recorded twice.
+  *Alternative:* one generic audit table for everything, including salary. It is
+  uniform, but loses typed columns for the money queries and means migrating
+  working, tested code for no user-visible gain.
+- **AD-38: Terminate and reinstate are explicit `POST` actions, not `DELETE`.**
+  Both need a body (the reason) and neither deletes anything, so `DELETE` was
+  misleading and can't portably carry a body.
+- **AD-39: CSV export, not Excel import, closes the spreadsheet gap first.** HR
+  needs numbers back in Excel every week; an import is a one-off migration that
+  needs a validation and dry-run report to be safe, so it stays out of scope.
+  Exports are exactly the on-screen view (all pages), amounts are exact decimals
+  built from minor units (no floats), the file has a UTF-8 BOM so Excel shows ¥, €
+  and accented names, responses are `no-store`, text cells starting with
+  `= + - @` are neutralised (CSV injection), and exports over 50,000 rows fail
+  loudly instead of truncating.
+- **AD-40: Latency budgets are a separate, on-demand test project.** Asserting
+  wall-clock time inside `npm test` made the suite's result depend on the machine.
+  `npm run test:perf` still checks Goals 1 and 2 against the full seed.
+- **AD-41: The seed's safety check looks at the data, not the environment.** It
+  refuses to run when salary changes or events were made by a signed-in user,
+  since that is exactly the work a reset destroys; `SEED_FORCE=true` overrides.
+  *Alternative:* block on `NODE_ENV=production`. That misses the common mistake,
+  which is running the seed locally with a production `DATABASE_URL`.
+- **AD-42: Employees whose currency has no FX rate are reported, not dropped
+  silently.** The USD aggregates must exclude them, but the summary returns
+  `excludedWithoutFx` and the Insights page shows a warning, so headcount never
+  disagrees with the directory without explanation.
 
 ## AI Prompts Log
 
-| # | Date | Prompt (summary) | Output review / corrections |
-| - | ---- | ---------------- | --------------------------- |
-| 1 | 2026-10-26 | "You are a senior full-stack engineer… fill in all six context files (project overview, architecture, code standards, UI context, AI workflow rules, progress tracker) for an ACME salary manager; planning only, no app code; commit `docs: add project context and spec files`." | Reviewed against the brief. The AI raised these issues instead of silently picking an answer: the SQLite/Postgres provider split (Q1), the delete semantics (Q2), the 32-bit Int overflow risk for minor units (AD-1), and the absence of `percentile_cont` on SQLite, which led to a portable window-function median (AD-4). |
-| 2 | 2026-10-26 | "go ahead as suggest" (approve all recommendations, start work) | The AI adopted Postgres everywhere (AD-12) and simplified the median (AD-4 → `percentile_cont`) and search (AD-6 → `ILIKE`, dropping the `searchText` column), because the portability constraints no longer applied. Docker was not installed, so it used the running Homebrew Postgres 15 for dev and test. The docs were committed separately before Phase 1. |
-| 3 | 2026-10-26 | "start where you left off" (resume Phase 1) | Reviewed the generated scaffold rather than accepting it as-is:<br>• Prisma's `prisma7.config.ts` was renamed to `prisma.config.ts`, and the client output was moved out of `app/`.<br>• The unexpected `cn` dependency was verified as official before it was kept.<br>• A broken font variable (`--font-sans` referencing itself) was fixed.<br>• Token names that clashed with shadcn's `--accent-foreground` and `--ring` were renamed.<br>• The deprecated `vite-tsconfig-paths` plugin was removed.<br>• The user rejected AI co-author trailers on commits, so commits carry no AI attribution. |
-| 4 | 2026-10-26 | "yes" (start Phase 2), then "go ahead; start with something else, test it again after some time if it is blocking" | Every result was checked by running it, not by reading the code:<br>• Determinism was proven with an md5 of every row across two seed runs.<br>• Plausibility was checked with USD medians per country computed in SQL.<br>• The seed was timed at 4.4 s against its 10 s target.<br>• Bugs caught: a stale Prisma client after `migrate dev`, and a 30 s `npx` overhead in test setup.<br>• Long builds now run in the background while the docs are updated. |
-| 5 | 2026-10-26 | "continue" (Phase 3) | The AI checked the Next 16 route handler docs (`RouteContext`, async `params`) before writing handlers. During design it found an audit gap (country moves change currency) and a concurrency race on "old salary", and fixed both (AD-17, AD-18). It moved the transactional history write from Phase 6 into Phase 3, to avoid shipping a known invariant violation. A mutation test confirmed the history tests fail when the write is removed. Product rules it had to assume are listed as Open Questions 9–12 instead of being decided silently. |
-| 6 | 2026-10-26 | "sure" (confirm assumptions 9–12, then Phase 4) | Before writing tests, the AI ran EXPLAIN ANALYZE against the 10k dev data to confirm index use and timings. It used hand-computed USD expectations (for example £50,000 × 1.27 = $63,500) to verify the conversion across GBP, USD, JPY (exponent 0) and INR. The performance test was run verbose to record the real timings, not just a pass. An SQL-injection-style `sort` value is covered by a test. |
-| 7 | 2026-10-26 | "continue" (Phase 5) | The insights SQL was verified two independent ways: hand-computed fixtures across GBP, USD, JPY and INR (including an even-count median), and a JS calculation over 300 generated employees compared against the SQL output. Self-review caught one weak test: the "≤ 20 buckets" case never triggered the clamp. It was replaced with an input that produces 21 buckets without the clamp. The build log exposed a bug from Phase 3: `handle()` caught Next's prerender bail-out error and logged it as a 500. It was fixed with `unstable_rethrow`, verified by a test using `notFound()`, and mutation-checked. The Phase 4 commit had also been made while an overlapping build was failing; from now on, the build must be clean before every commit. The shared filter SQL was extracted, and the existing directory tests were the safety net for that refactor. |
-| 8 | 2026-10-27 | "start where you left off" (new session, Phase 6) | The AI reread the context files and the git state first. Rollback was tested with a realistic failure (a broken `changed_by_id` FK) rather than a mock. The concurrency test was proven meaningful by mutation: without `FOR UPDATE` it fails in 3 of 5 runs, and with the lock it passes 5 of 5. The build is confirmed clean before committing. |
-| 9 | 2026-10-27 | "continue" (Phase 7, auth) | The AI read the Next 16 `proxy.md` first (Node runtime, matcher syntax, and the docs' advice not to rely on the proxy alone), which led to the two-layer design (AD-26). A new env test exposed a real Phase 3 bug: Zod 4's `z.email().trim()` validates before trimming. It was fixed in all 3 schemas, with a regression test. A mutation check (removing `requireSession` from one route) confirmed the 401 sweep catches it. Beyond the unit tests, it ran a 10-step `curl` smoke test against `next start`: redirects, 401s, cookie flags, login, logout and static assets. The generated dev password went only into the gitignored `.env` and was never printed. |
-| 10 | 2026-10-27 | "yes" (Phase 8, first UI) | The AI read the Cache Components and Suspense docs first.<br>• Logic was kept in pure, tested helpers, because async server components can't run in Vitest.<br>• A component test exposed non-canonical URLs (parameter order depended on click order). Fixed.<br>• The production build was clean, but inspecting `next start` HTML and logs found 2 issues that tests and the build missed: a prerender clock error, and a login form missing from the HTML (AD-30).<br>• A smoke run first gave false results: `pkill` missed the old server, so a stale process served mismatched build files. The AI noticed the inconsistency, freed the port by PID, and re-verified on a fresh server.<br>• No browser was connected, so visual review is pending with the user. |
-| 11 | 2026-10-27 | "yes" (Phase 9) | The AI narrowed the untrusted API error body with type guards after a type error exposed an unsafe union. The production build failed (`usePathname` outside Suspense on the new dynamic route), but a `grep` pipeline had masked the exit code. The AI caught the real failure in the log, fixed it (AD-30 addendum), switched to checking the build's real exit status, and confirmed the earlier phases' builds were genuine passes (their logs print the route table, which failed builds never do). Live smoke test: a full create → raise → terminate cycle checked through the detail page HTML, with zero errors in the server log. The not-found HTTP 200 was investigated, confirmed as Next streaming behaviour, and recorded (AD-32). |
-| 12 | 2026-10-27 | "continue" (Phase 10, insights), then "sure" after a tool-permission outage | The AI loaded the dataviz skill before writing any chart code. It followed the procedure (form, then color, then validator, then marks, then interaction, then table views) and validated the chart color with the provided script. Self-review deleted one vacuous test. After the outage, it checked what held port 3100 instead of killing it blindly: it was a VS Code helper, so the AI used port 3210. A smoke-script bug (zsh doesn't word-split unquoted variables) produced garbage, which the AI recognised and rewrote. An unexpected count of 10,001 active employees was investigated in SQL rather than "fixed": it was an employee the user had added through the UI. Final check: the dashboard tiles match the API exactly (12 of 12). |
-| 13 | 2026-10-27 | "sure, also can you improve the pagination and be more intuitive and have better UI/UX" | The AI scoped this as its own unit and commit, ahead of the rest of Phase 11. It designed a numbered pager on the MUI-style constant-width algorithm, with rows per page and "Go to page", and wrote the algorithm as a pure, property-tested function. A component test caught a real UX conflict: the `min` and `max` on "Go to page" let native validation block the submit before the friendlier clamp ran. Fixed with `noValidate`. The live HTML check first misparsed attribute order; the AI re-checked with exact matches instead of assuming the feature was broken. A second macOS `sed \b` slip was caught by grep before typecheck. |
-| 14 | 2026-10-27 | (continuing the approved Phase 11) | The AI audited the route files for missing states rather than assuming they were complete, and found five gaps: no root not-found page, no global error page, no skip link, error digests dropped, and empty states that blamed filters which weren't applied. A sixth, a page past the end that showed "no matches", was found while fixing those. Performance was measured end to end over HTTP, not only at the service level. The AI checked the README against the facts before committing: "two clicks" was qualified, and an AD reference was corrected. |
+I built this with an AI coding assistant (Claude Code). The context files were the
+contract: I wrote the brief into them first, then had the assistant implement one
+phase at a time against them. I reviewed every phase by running it (tests, the
+production build, and live `curl` and browser checks against `next start`), not by
+reading the diff alone. The table records what I asked for, what I checked, and
+what I changed or rejected.
+
+| # | Date | What I asked for | What I checked, changed or rejected |
+| - | ---- | ---------------- | ----------------------------------- |
+| 1 | 2026-10-26 | Act as a senior full-stack engineer and fill in all six context files (overview, architecture, code standards, UI, workflow rules, progress tracker) for the ACME salary manager. Planning only, no code. | I asked for open questions to be listed, not silently decided. That surfaced the SQLite vs Postgres split (Q1), delete semantics (Q2), the 32-bit overflow risk for minor units (AD-1), and the lack of `percentile_cont` on SQLite (AD-4). |
+| 2 | 2026-10-26 | Approve the recommendations and start. | I chose Postgres everywhere (AD-12), which let the median use `percentile_cont` and search use plain `ILIKE`, and dropped the denormalised `searchText` column that only existed for SQLite. |
+| 3 | 2026-10-26 | Phase 1: scaffold Next.js, Prisma, Vitest and tooling. | I did not accept the scaffold as generated: I moved the Prisma client out of `app/`, renamed `prisma7.config.ts`, fixed a self-referencing font variable, renamed tokens that clashed with shadcn's, removed the deprecated `vite-tsconfig-paths`, and checked the unfamiliar `cn` dependency before keeping it. Commits carry no AI attribution. |
+| 4 | 2026-10-26 | Phase 2: schema, migration and a deterministic 10,000-employee seed. | I proved determinism with an md5 of every row across two runs, sanity-checked USD medians per country in SQL, and timed the seed (4.4 s against a 10 s target). |
+| 5 | 2026-10-26 | Phase 3: employee service, CRUD API and validation. | Design review found two gaps I made the assistant fix before moving on: a country move changes currency, so history must record both (AD-17), and concurrent edits could record the wrong "old" salary, so the row is locked (AD-18). I pulled the transactional history write forward from Phase 6 so no commit ever violated Invariant 5, and confirmed by mutation that the tests fail when the write is removed. |
+| 6 | 2026-10-26 | Phase 4: paginated directory with search, filters and sort. | Before accepting the queries I ran EXPLAIN ANALYZE on the 10k dataset. USD conversion is checked against hand-computed values across GBP, USD, JPY (no minor unit) and INR, and an injection-style `sort` value has a test. |
+| 7 | 2026-10-26 | Phase 5: insights service and API. | The SQL is verified two independent ways: hand-computed fixtures (including an even-count median) and a JavaScript calculation over generated data. I replaced one test that never exercised the bucket clamp it claimed to cover. The build log exposed a Phase 3 bug (`handle()` swallowed Next's prerender signal as a 500), fixed with `unstable_rethrow` and a test. |
+| 8 | 2026-10-27 | Phase 6: salary history API with rollback and concurrency tests. | Rollback is tested with a real FK failure, not a mock. Without `FOR UPDATE` the concurrency test fails 3 times in 5; with it, 5 in 5 pass. |
+| 9 | 2026-10-27 | Phase 7: HR Manager auth. | I asked for the Next 16 proxy docs to be read first; their advice not to rely on the proxy alone led to two auth layers (AD-26), and a mutation check confirmed the 401 sweep catches a missing session check. A new env test exposed a Zod 4 bug (`z.email().trim()` validates before trimming), fixed in all three schemas. I smoke-tested login, logout, redirects and cookie flags with `curl`. |
+| 10 | 2026-10-27 | Phase 8: app shell, login and directory UI. | Logic went into pure, tested helpers because async server components can't run in Vitest. A component test caught non-canonical URLs (parameter order depended on click order). Inspecting the live HTML found two issues the tests and build missed: a prerender clock error and a login form missing from the HTML (AD-30). |
+| 11 | 2026-10-27 | Phase 9: employee form, detail page and salary history UI. | The build failed (`usePathname` outside Suspense) but a shell pipeline had hidden the exit code; I switched to checking the real exit status and re-verified earlier phases. I checked a full create, raise and terminate cycle against the live server. The not-found HTTP 200 was investigated and recorded as a known limitation (AD-32). |
+| 12 | 2026-10-27 | Phase 10: insights dashboard. | I had the dataviz guidance applied before any chart code: one honest measure per chart, colours validated with a script. I deleted one vacuous test. An unexpected count of 10,001 was traced in SQL to an employee I had added through the UI, rather than "fixed". The dashboard tiles match the API exactly. |
+| 13 | 2026-10-27 | Make pagination clearer: numbered pages, rows per page and "go to page". | Scoped as its own commit. The page-number algorithm is a pure, property-tested function. A component test caught native `min`/`max` validation blocking the friendlier clamp; fixed with `noValidate`. |
+| 14 | 2026-10-27 | Phase 11: empty, error and loading states, performance, README. | I audited the routes for missing states and found six gaps (no root not-found page, no global error page, no skip link, dropped error digests, empty states that blamed filters that weren't applied, and a past-the-end page shown as "no matches"). Performance was measured over real HTTP, not only at the service level. |
+| 15 | 2026-10-27 | Review the whole submission strictly against the brief, then fix what it finds. | I used it as a second reviewer and kept what held up. The "show terminated" switch was effectively broken (no leavers in the seed, one leaver buried in 10,000 rows), so I replaced it with a status filter (AD-36). The audit trail only covered salary, so I added `employee_events` and reinstate (AD-37, AD-38). With no way back to Excel, I added CSV export (AD-39). Timing assertions in `npm test` were not deterministic (AD-40). The seed could wipe real data (AD-41), and insights dropped employees without an FX rate silently (AD-42). I rejected two findings after checking the code: the toast theme was already pinned to light, and `shadcn` is a real build input via `globals.css`. |
 
 ## Session Notes
 
-- 2026-10-26: The repo started empty, apart from the context templates provided in
-  chat, so they were created under `context/`. No app code exists yet. Next session:
-  read all six files, apply the answers to the Open Questions, then start Phase 1.
-- 2026-10-26: The open questions are resolved. Local dev uses Homebrew Postgres 15 on
-  `localhost:5432` (Docker is not installed on this machine). The databases are
-  `acme_salary` (dev) and `acme_salary_test` (tests).
-- 2026-10-26: Phase 2 is done. Gotchas:
-  - Prisma 7's `migrate dev` no longer regenerates the client, so run
-    `npm run db:generate` after a schema change.
-  - `npx prisma` adds about 30 s on this machine (a registry lookup), so scripts call
-    `node_modules/.bin/prisma` or go through npm scripts.
-  - Run long commands (build, install) in the background so they don't block other
-    work.
-  - macOS `sed` does not support `\b`. Use plain patterns or Python for renames.
-  - Port 3100 is used by a VS Code helper on this machine; smoke tests use 3210.
+- Local dev uses Postgres 15 on `localhost:5432`, with the databases `acme_salary`
+  (dev) and `acme_salary_test` (tests).
+- Prisma 7's `migrate dev` no longer regenerates the client, so run
+  `npm run db:generate` after a schema change.
+- Scripts call `node_modules/.bin/prisma` (or npm scripts) rather than `npx prisma`,
+  which adds a slow registry lookup.
+- Check the build's real exit status; a pipeline like `npm run build | tail` hides a
+  failure.

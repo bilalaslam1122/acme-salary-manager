@@ -146,14 +146,14 @@ Each decision, with its alternatives and trade-offs, is recorded in the
 
 ## Testing
 
-**310 tests across 33 files.** They are fast and deterministic, and make no network
-calls.
+**365 tests across 36 files** in `npm test` (about 20 s). They are deterministic
+and make no network calls. Latency budgets run separately with `npm run test:perf`.
 
-| Project       | Tests | What it covers                                                                                                                                                       |
-| ------------- | ----: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `unit`        |   159 | Pure logic: money parsing and formatting, validation, URLs, pagination, chart data, seed, sessions, proxy                                                            |
-| `component`   |    48 | React Testing Library: login, directory toolbar and table, employee form, terminate dialog, history, pagination, charts                                              |
-| `integration` |   103 | Services and route handlers against a real Postgres test database, including rollback, concurrency, the 401 sweep over every protected route, and performance at 10k |
+| Project       | Tests | What it covers                                                                                                                                                   |
+| ------------- | ----: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `unit`        |   190 | Pure logic: money parsing and formatting, CSV writing, audit diffs, validation, URLs, pagination, chart data, seed, sessions, proxy                              |
+| `component`   |    55 | React Testing Library: login, directory toolbar and table, employee form, terminate/reinstate dialog, history, activity, pagination, charts                      |
+| `integration` |   120 | Services and route handlers against a real Postgres test database, including rollback, concurrency, audit events, CSV exports and the 401 sweep over every route |
 
 - The integration tests run against `TEST_DATABASE_URL`, and refuse any database
   whose name doesn't end in `_test`.
@@ -196,12 +196,22 @@ build and how, and every unit of work is implemented against them:
 | [`ai-workflow-rules.md`](context/ai-workflow-rules.md) | How work is scoped, verified and committed              |
 | [`progress-tracker.md`](context/progress-tracker.md)   | Plan, decisions, open questions, and the AI prompts log |
 
-Work was done with an AI coding assistant, one phase per commit, using
-conventional commits. The
-[AI prompts log](context/progress-tracker.md#ai-prompts-log) records each prompt,
-how the output was reviewed, and what was corrected. Examples include a Zod 4
-trim-order bug, Next 16 prerender errors found only on the live server, and a
-build failure hidden by a shell pipeline.
+### How I used AI
+
+I built this with an AI coding assistant (Claude Code), one phase per commit. The
+context files above were written first and acted as the contract the assistant
+worked against, which kept its output consistent across sessions.
+
+I treated the output as a pull request from a fast junior engineer: every phase was
+checked by running it, not by reading the diff. That meant tests, the production
+build, `EXPLAIN ANALYZE` on the 10k dataset, and `curl` checks against
+`next start`. Things that review caught include a Zod 4 trim-order bug, a race on
+the "old salary" that needed a row lock, a Next 16 prerender error that only
+appeared on the live server, and a build failure hidden by a shell pipeline. Key
+tests were mutation-checked so they can't pass vacuously.
+
+The [AI prompts log](context/progress-tracker.md#ai-prompts-log) records what I
+asked for in each phase, what I checked, and what I changed or rejected.
 
 ## Known limitations
 

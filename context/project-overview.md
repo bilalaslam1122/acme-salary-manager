@@ -37,18 +37,23 @@ across country, department and job title from a single dashboard.
 
 ### Employee management
 
-- Create, view, edit and terminate employees. Termination is a soft delete; see the
-  open questions.
+- Create, view, edit, terminate and reinstate employees. Termination is a soft
+  delete with a required reason; history is always kept.
 - Each employee has a name, email, employee code, job title, department, country,
   hire date, and an annual base salary in the country's currency.
 - Every salary change, including the initial salary, writes an audit row: old value,
   new value, currency, who made the change, when, and an optional reason.
+- Every other change (job title, department, country, name, email, hire date),
+  termination and reinstatement is audited too: before and after values, who, when
+  and why.
 
 ### Employee directory
 
 - Server-side pagination: 50 rows per page by default, 100 at most.
 - Search is case-insensitive and matches name, email or employee code.
-- Filters for country, department and job title, which can be combined.
+- Filters for country, department and job title, which can be combined, and an
+  employment status filter: active (default), terminated, or all.
+- Export the current view (every page) to CSV for Excel.
 - Sort by name, job title, hire date, or salary normalized to USD.
 
 ### Salary insights
@@ -57,7 +62,9 @@ across country, department and job title from a single dashboard.
 - Headcount by country.
 - A histogram of the salary distribution, in USD.
 - Cross-country comparison in USD. Rates come from a static, versioned FX table, and
-  each result shows the rate version and date it used.
+  each result shows the rate version and date it used. Employees whose currency has
+  no rate are counted and flagged, never dropped silently.
+- Export the "salary by…" table to CSV.
 
 ## Scope
 
@@ -75,8 +82,10 @@ across country, department and job title from a single dashboard.
 - **RBAC and SSO.** There is one user persona. Adding roles would be speculative
   complexity.
 - **Multi-tenancy.** The app serves one organization (ACME).
-- **Excel import.** This is a stretch goal, not required by the core flow. It is
-  revisited after Phase 12.
+- **Excel import.** Moving 10,000 rows in is a one-off migration. Doing it safely
+  needs column mapping, validation and a dry-run report, which is a project of its
+  own. Getting numbers back out to Excel happens every week, so CSV export is in
+  scope instead. The seed already proves the bulk-insert path an import would use.
 - **Bonuses, equity and benefits.** The questions asked are about base salary. Other
   compensation types would multiply the data model.
 - **Dark mode.** It does not help answer the HR Manager's questions. The design tokens
@@ -84,8 +93,9 @@ across country, department and job title from a single dashboard.
 
 ## Success Criteria
 
-1. The signed-in HR Manager can create, edit and terminate an employee. Each change
-   appears in the directory immediately.
+1. The signed-in HR Manager can create, edit, terminate and reinstate an employee.
+   Each change appears in the directory immediately and in the employee's audit
+   trail.
 2. Changing a salary adds exactly one SalaryHistory row with the old and new values.
 3. Directory search, filters and sort all run on the server and meet Goal 1 at 10,000
    rows.
@@ -95,4 +105,4 @@ across country, department and job title from a single dashboard.
 5. Unauthenticated requests to any page or API other than login are rejected or
    redirected.
 6. `npm run test`, `npm run lint` and `npm run build` all pass. The seed produces
-   identical data on every run.
+   identical data on every run: 10,000 active and 400 former employees.
