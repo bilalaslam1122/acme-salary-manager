@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ArrowUpDown, SearchX } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, SearchX, Users } from "lucide-react";
 import Link from "next/link";
 import { EmptyState } from "@/components/common/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,11 @@ import {
 } from "@/components/ui/table";
 import { formatMoney, formatUsdCents } from "@/lib/money/format";
 import type { EmployeeListItem } from "@/lib/services/employee-directory";
-import { sortHref } from "@/lib/validation/directory-url";
+import {
+  directoryHref,
+  hasDirectoryFilters,
+  sortHref,
+} from "@/lib/validation/directory-url";
 import type {
   EmployeeListQuery,
   EmployeeSortField,
@@ -22,21 +26,13 @@ import type {
 interface DirectoryTableProps {
   rows: EmployeeListItem[];
   query: EmployeeListQuery;
+  /** Total matches across all pages; distinguishes "past the end" from "no matches". */
+  total: number;
 }
 
-export function DirectoryTable({ rows, query }: DirectoryTableProps) {
+export function DirectoryTable({ rows, query, total }: DirectoryTableProps) {
   if (rows.length === 0) {
-    return (
-      <EmptyState
-        icon={SearchX}
-        title="No employees match these filters."
-        action={
-          <Button asChild variant="outline" size="sm">
-            <Link href="/employees">Clear filters</Link>
-          </Button>
-        }
-      />
-    );
+    return <DirectoryEmptyState query={query} total={total} />;
   }
 
   return (
@@ -129,5 +125,47 @@ function SortableHead({
         />
       </Link>
     </TableHead>
+  );
+}
+
+/** Three different "nothing here" situations need three different ways out. */
+function DirectoryEmptyState({
+  query,
+  total,
+}: {
+  query: EmployeeListQuery;
+  total: number;
+}) {
+  if (total > 0) {
+    return (
+      <EmptyState
+        icon={SearchX}
+        title="This page is past the end of the results."
+        action={
+          <Button asChild variant="outline" size="sm">
+            <Link href={directoryHref(query, { page: 1 })}>Go to the first page</Link>
+          </Button>
+        }
+      />
+    );
+  }
+  if (hasDirectoryFilters(query)) {
+    return (
+      <EmptyState
+        icon={SearchX}
+        title="No employees match these filters."
+        action={
+          <Button asChild variant="outline" size="sm">
+            <Link href="/employees">Clear filters</Link>
+          </Button>
+        }
+      />
+    );
+  }
+  return (
+    <EmptyState
+      icon={Users}
+      title="No employees yet. Use “Add employee” to create the first one."
+    />
   );
 }

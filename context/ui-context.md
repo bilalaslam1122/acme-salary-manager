@@ -163,6 +163,14 @@ Charts use Recharts, wrapped in `components/insights/*`, and take colours from t
   again". Mutation failures show a toast and keep the form's input. Field validation
   errors appear inline. Users never see raw error codes or stack traces.
 - **Success:** A toast confirms each mutation, for example "Employee updated".
+- **Empty states name the real situation.** "No employees yet" when there is no
+  data; "match these filters" only when a filter or search is applied; "past the
+  end of the results" for an out-of-range page. Each has the matching way out.
+- **Errors show a reference.** Route error cards show Next's error `digest`, which
+  matches the server log, never the error message itself. A root `global-error.tsx`
+  covers failures in the root layout, and `not-found.tsx` covers unknown URLs.
+- **Keyboard:** a "Skip to content" link is the first focusable element on app
+  pages.
 
 ## Icons
 

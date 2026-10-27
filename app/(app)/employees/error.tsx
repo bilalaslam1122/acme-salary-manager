@@ -2,6 +2,12 @@
 
 import { RouteError } from "@/components/common/route-error";
 
-export default function EmployeesError({ reset }: { error: Error; reset: () => void }) {
-  return <RouteError title="Couldn't load employees" reset={reset} />;
+export default function EmployeesError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  return <RouteError title="Couldn't load employees" error={error} reset={reset} />;
 }

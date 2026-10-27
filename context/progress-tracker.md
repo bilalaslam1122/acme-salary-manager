@@ -4,12 +4,12 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 10, insights dashboard: complete. Phase 11 is next.
+- Phase 11, polish, performance and README: complete. Phase 12 (deployment) is next.
 
 ## Current Goal
 
-- Phase 11: polish the empty, error and loading states, check performance at 10k,
-  and finish the README.
+- Phase 12: deploy to Vercel + Neon, seed production, and write the demo script for
+  the video.
 
 ## Completed
 
@@ -184,6 +184,24 @@ Update this file after every meaningful implementation change.
         filter-preserving canonical hrefs.
       - Tidy-up: the deprecated React `FormEvent` type was replaced with
         `SubmitEvent` in all 3 forms.
+- [x] Phase 11:
+      - States audit and fixes:
+        - A branded root `not-found.tsx` (unknown URLs now return a real 404).
+        - A `global-error.tsx` for root-layout failures.
+        - Route error cards show Next's error `digest` as a reference ID.
+        - A "Skip to content" link, with `main` focusable.
+      - The empty states now tell three situations apart: a page past the end
+        ("Go to the first page"), filters that match nothing ("Clear filters"),
+        and no employees yet (points to "Add employee"). Insights does the same.
+      - Performance, measured as real HTTP requests to `next start` at 10k+
+        employees (20 warm requests each):
+        - directory API: 12–31 ms median (worst 33 ms; goal under 300 ms);
+        - insights API: 20–30 ms median (worst 31 ms; goal under 500 ms);
+        - full pages: 20–40 ms.
+        - The service-level performance tests agree: 4–44 ms.
+      - README rewritten for reviewers: features, quick start, architecture, key
+        decisions linked to ADs, testing (310 tests), performance table, the
+        spec-driven workflow with the AI prompts log, and known limitations.
 
 ## In Progress
 
@@ -217,7 +235,7 @@ Each bullet is one verifiable unit and one commit.
 - [x] **Phase 9:** `feat:` UI: the create/edit employee sheet, terminate confirmation,
       and employee detail with history.
 - [x] **Phase 10:** `feat:` UI: the insights dashboard with stat cards and charts.
-- [ ] **Phase 11:** `chore:` Polish the empty, error and loading states, verify the
+- [x] **Phase 11:** `chore:` Polish the empty, error and loading states, verify the
       performance goals at 10k, and write the README.
 - [ ] **Phase 12:** `chore:` Deploy, seed production, and write the demo script for
       the video.
@@ -518,7 +536,8 @@ Resolved:
 | 10 | 2026-10-27 | "yes" (Phase 8, first UI) | The AI read the Cache Components and Suspense docs first.<br>• Logic was kept in pure, tested helpers, because async server components can't run in Vitest.<br>• A component test exposed non-canonical URLs (parameter order depended on click order). Fixed.<br>• The production build was clean, but inspecting `next start` HTML and logs found 2 issues that tests and the build missed: a prerender clock error, and a login form missing from the HTML (AD-30).<br>• A smoke run first gave false results: `pkill` missed the old server, so a stale process served mismatched build files. The AI noticed the inconsistency, freed the port by PID, and re-verified on a fresh server.<br>• No browser was connected, so visual review is pending with the user. |
 | 11 | 2026-10-27 | "yes" (Phase 9) | The AI narrowed the untrusted API error body with type guards after a type error exposed an unsafe union. The production build failed (`usePathname` outside Suspense on the new dynamic route), but a `grep` pipeline had masked the exit code. The AI caught the real failure in the log, fixed it (AD-30 addendum), switched to checking the build's real exit status, and confirmed the earlier phases' builds were genuine passes (their logs print the route table, which failed builds never do). Live smoke test: a full create → raise → terminate cycle checked through the detail page HTML, with zero errors in the server log. The not-found HTTP 200 was investigated, confirmed as Next streaming behaviour, and recorded (AD-32). |
 | 12 | 2026-10-27 | "continue" (Phase 10, insights), then "sure" after a tool-permission outage | The AI loaded the dataviz skill before writing any chart code. It followed the procedure (form, then color, then validator, then marks, then interaction, then table views) and validated the chart color with the provided script. Self-review deleted one vacuous test. After the outage, it checked what held port 3100 instead of killing it blindly: it was a VS Code helper, so the AI used port 3210. A smoke-script bug (zsh doesn't word-split unquoted variables) produced garbage, which the AI recognised and rewrote. An unexpected count of 10,001 active employees was investigated in SQL rather than "fixed": it was an employee the user had added through the UI. Final check: the dashboard tiles match the API exactly (12 of 12). |
-| 13 | 2026-10-27 | "sure, also can you improve the pagination and be more intuitive and have better UI/UX" | The AI scoped this as its own unit and commit, ahead of the rest of Phase 11. It designed a numbered pager on the MUI-style constant-width algorithm, with rows per page and "Go to page", and wrote the algorithm as a pure, property-tested function. A component test caught a real UX conflict: the `min` and `max` on "Go to page" let native validation block the submit before the friendlier clamp ran. Fixed with `noValidate`. The live HTML check first misparsed attribute order; the AI re-checked with exact matches instead of assuming the feature was broken. A second macOS `sed \\b` slip was caught by grep before typecheck. |
+| 13 | 2026-10-27 | "sure, also can you improve the pagination and be more intuitive and have better UI/UX" | The AI scoped this as its own unit and commit, ahead of the rest of Phase 11. It designed a numbered pager on the MUI-style constant-width algorithm, with rows per page and "Go to page", and wrote the algorithm as a pure, property-tested function. A component test caught a real UX conflict: the `min` and `max` on "Go to page" let native validation block the submit before the friendlier clamp ran. Fixed with `noValidate`. The live HTML check first misparsed attribute order; the AI re-checked with exact matches instead of assuming the feature was broken. A second macOS `sed \b` slip was caught by grep before typecheck. |
+| 14 | 2026-10-27 | (continuing the approved Phase 11) | The AI audited the route files for missing states rather than assuming they were complete, and found five gaps: no root not-found page, no global error page, no skip link, error digests dropped, and empty states that blamed filters which weren't applied. A sixth, a page past the end that showed "no matches", was found while fixing those. Performance was measured end to end over HTTP, not only at the service level. The AI checked the README against the facts before committing: "two clicks" was qualified, and an AD reference was corrected. |
 
 ## Session Notes
 

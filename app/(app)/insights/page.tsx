@@ -1,4 +1,4 @@
-import { SearchX } from "lucide-react";
+import { ChartColumn, SearchX } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
@@ -27,6 +27,7 @@ import { getReferenceData } from "@/lib/services/reference";
 import type { InsightGroup } from "@/lib/validation/insights";
 import {
   filtersOf,
+  hasFilters,
   insightsHref,
   parseInsightsQuery,
 } from "@/lib/validation/insights-url";
@@ -74,15 +75,24 @@ async function InsightsContent({
 
       {summary.data.headcount === 0 ? (
         <Card className="rounded-lg">
-          <EmptyState
-            icon={SearchX}
-            title="No active employees match these filters."
-            action={
-              <Button asChild variant="outline" size="sm">
-                <Link href={insightsHref({ groupBy: query.groupBy })}>Clear filters</Link>
-              </Button>
-            }
-          />
+          {hasFilters(query) ? (
+            <EmptyState
+              icon={SearchX}
+              title="No active employees match these filters."
+              action={
+                <Button asChild variant="outline" size="sm">
+                  <Link href={insightsHref({ groupBy: query.groupBy })}>
+                    Clear filters
+                  </Link>
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState
+              icon={ChartColumn}
+              title="No active employees yet. Insights appear once employees are added."
+            />
+          )}
         </Card>
       ) : (
         <>

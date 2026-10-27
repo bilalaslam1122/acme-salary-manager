@@ -48,3 +48,8 @@ export function sortHref(query: EmployeeListQuery, field: EmployeeSortField): st
   const order = query.sort === field && query.order === "asc" ? "desc" : "asc";
   return directoryHref(query, { sort: field, order, page: 1 });
 }
+
+/** True when the view is narrowed by search or a filter (not just sort/paging). */
+export function hasDirectoryFilters(query: EmployeeListQuery): boolean {
+  return Boolean(query.q || query.countryCode || query.departmentId || query.jobTitle);
+}

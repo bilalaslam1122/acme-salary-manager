@@ -51,7 +51,7 @@ async function Directory({
         {result.meta.fxVersion && ` · USD at FX ${result.meta.fxVersion}`}
       </p>
       <Card className="gap-0 overflow-hidden rounded-lg py-0">
-        <DirectoryTable rows={result.data} query={query} />
+        <DirectoryTable rows={result.data} query={query} total={result.meta.total} />
         <Pagination
           page={result.meta.page}
           pageSize={result.meta.pageSize}
