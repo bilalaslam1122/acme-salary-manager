@@ -1,13 +1,13 @@
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { Pagination } from "@/components/common/pagination";
 import { EmployeeSheet } from "@/components/employees/employee-sheet";
 import { SalaryHistoryTable } from "@/components/employees/salary-history-table";
 import { TerminateButton } from "@/components/employees/terminate-button";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NotFoundError } from "@/lib/errors";
@@ -124,13 +124,17 @@ async function EmployeeDetailView({
           </CardTitle>
         </CardHeader>
         <SalaryHistoryTable rows={history.data} />
-        {history.meta.totalPages > 1 && (
-          <HistoryPagination
-            id={id}
-            page={history.meta.page}
-            totalPages={history.meta.totalPages}
-          />
-        )}
+        <Pagination
+          page={history.meta.page}
+          pageSize={history.meta.pageSize}
+          total={history.meta.total}
+          totalPages={history.meta.totalPages}
+          hrefForPage={(page) =>
+            page === 1 ? `/employees/${id}` : `/employees/${id}?historyPage=${page}`
+          }
+          itemLabel={{ singular: "change", plural: "changes" }}
+          label="Salary history pages"
+        />
       </Card>
     </>
   );
@@ -142,43 +146,6 @@ function Detail({ label, value }: { label: string; value: string }) {
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="font-medium tabular-nums">{value}</dd>
     </div>
-  );
-}
-
-function HistoryPagination({
-  id,
-  page,
-  totalPages,
-}: {
-  id: number;
-  page: number;
-  totalPages: number;
-}) {
-  const href = (target: number) =>
-    target === 1 ? `/employees/${id}` : `/employees/${id}?historyPage=${target}`;
-  return (
-    <nav
-      aria-label="Salary history pages"
-      className="flex items-center justify-end gap-2 border-t px-4 py-3 text-sm"
-    >
-      {page > 1 && (
-        <Button asChild variant="outline" size="icon">
-          <Link href={href(page - 1)} aria-label="Newer changes">
-            <ChevronLeft className="h-4 w-4" aria-hidden />
-          </Link>
-        </Button>
-      )}
-      <span className="text-muted-foreground tabular-nums">
-        Page {page} of {totalPages}
-      </span>
-      {page < totalPages && (
-        <Button asChild variant="outline" size="icon">
-          <Link href={href(page + 1)} aria-label="Older changes">
-            <ChevronRight className="h-4 w-4" aria-hidden />
-          </Link>
-        </Button>
-      )}
-    </nav>
   );
 }
 

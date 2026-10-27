@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { DirectoryPagination } from "@/components/employees/directory-pagination";
+import { Pagination } from "@/components/common/pagination";
 import { DirectorySkeleton } from "@/components/employees/directory-skeleton";
 import { DirectoryTable } from "@/components/employees/directory-table";
 import { DirectoryToolbar } from "@/components/employees/directory-toolbar";
@@ -8,11 +8,12 @@ import { EmployeeSheet } from "@/components/employees/employee-sheet";
 import { Card } from "@/components/ui/card";
 import { listEmployees } from "@/lib/services/employee-directory";
 import { getReferenceData } from "@/lib/services/reference";
-import { parseDirectoryQuery } from "@/lib/validation/directory-url";
+import { directoryHref, parseDirectoryQuery } from "@/lib/validation/directory-url";
 
 export const metadata: Metadata = { title: "Employees · ACME Salary Manager" };
 
 const countFormat = new Intl.NumberFormat("en-US");
+const PAGE_SIZES = [25, 50, 100];
 
 export default function EmployeesPage({ searchParams }: PageProps<"/employees">) {
   return (
@@ -51,7 +52,19 @@ async function Directory({
       </p>
       <Card className="gap-0 overflow-hidden rounded-lg py-0">
         <DirectoryTable rows={result.data} query={query} />
-        <DirectoryPagination query={query} meta={result.meta} />
+        <Pagination
+          page={result.meta.page}
+          pageSize={result.meta.pageSize}
+          total={result.meta.total}
+          totalPages={result.meta.totalPages}
+          hrefForPage={(page) => directoryHref(query, { page })}
+          itemLabel={{ singular: "employee", plural: "employees" }}
+          label="Employee pages"
+          pageSizeOptions={PAGE_SIZES.map((size) => ({
+            size,
+            href: directoryHref(query, { pageSize: size, page: 1 }),
+          }))}
+        />
       </Card>
     </div>
   );

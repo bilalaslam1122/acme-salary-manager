@@ -169,6 +169,21 @@ Update this file after every meaningful implementation change.
       - Live check: the dashboard's stat tiles match the API's `/summary` JSON
         exactly for 3 filter sets (12 of 12 values), it renders in 46 ms, and the
         server log has no errors. The Insights nav link now works.
+- [x] Pagination UX, requested by the user on 2026-10-27:
+      - A shared `Pagination` component with numbered pages and ellipses, at a
+        constant 7-slot width.
+      - First, previous, next and last controls, a "Showing x–y of n" summary, and
+        rows per page (25, 50, 100).
+      - "Go to page" (clamped), a compact mobile mode, and recovery from a page
+        past the end.
+      - Replaces both the directory and the salary history pagers.
+      - The pure `pageItems` and `pageRange` functions in `lib/pagination.ts` have
+        12 unit tests, including the constant-width property over 200 pages, and
+        the component has 13 tests.
+      - Live check on `next start`: page numbers, the selected page size, and
+        filter-preserving canonical hrefs.
+      - Tidy-up: the deprecated React `FormEvent` type was replaced with
+        `SubmitEvent` in all 3 forms.
 
 ## In Progress
 
@@ -503,6 +518,7 @@ Resolved:
 | 10 | 2026-10-27 | "yes" (Phase 8, first UI) | The AI read the Cache Components and Suspense docs first.<br>• Logic was kept in pure, tested helpers, because async server components can't run in Vitest.<br>• A component test exposed non-canonical URLs (parameter order depended on click order). Fixed.<br>• The production build was clean, but inspecting `next start` HTML and logs found 2 issues that tests and the build missed: a prerender clock error, and a login form missing from the HTML (AD-30).<br>• A smoke run first gave false results: `pkill` missed the old server, so a stale process served mismatched build files. The AI noticed the inconsistency, freed the port by PID, and re-verified on a fresh server.<br>• No browser was connected, so visual review is pending with the user. |
 | 11 | 2026-10-27 | "yes" (Phase 9) | The AI narrowed the untrusted API error body with type guards after a type error exposed an unsafe union. The production build failed (`usePathname` outside Suspense on the new dynamic route), but a `grep` pipeline had masked the exit code. The AI caught the real failure in the log, fixed it (AD-30 addendum), switched to checking the build's real exit status, and confirmed the earlier phases' builds were genuine passes (their logs print the route table, which failed builds never do). Live smoke test: a full create → raise → terminate cycle checked through the detail page HTML, with zero errors in the server log. The not-found HTTP 200 was investigated, confirmed as Next streaming behaviour, and recorded (AD-32). |
 | 12 | 2026-10-27 | "continue" (Phase 10, insights), then "sure" after a tool-permission outage | The AI loaded the dataviz skill before writing any chart code. It followed the procedure (form, then color, then validator, then marks, then interaction, then table views) and validated the chart color with the provided script. Self-review deleted one vacuous test. After the outage, it checked what held port 3100 instead of killing it blindly: it was a VS Code helper, so the AI used port 3210. A smoke-script bug (zsh doesn't word-split unquoted variables) produced garbage, which the AI recognised and rewrote. An unexpected count of 10,001 active employees was investigated in SQL rather than "fixed": it was an employee the user had added through the UI. Final check: the dashboard tiles match the API exactly (12 of 12). |
+| 13 | 2026-10-27 | "sure, also can you improve the pagination and be more intuitive and have better UI/UX" | The AI scoped this as its own unit and commit, ahead of the rest of Phase 11. It designed a numbered pager on the MUI-style constant-width algorithm, with rows per page and "Go to page", and wrote the algorithm as a pure, property-tested function. A component test caught a real UX conflict: the `min` and `max` on "Go to page" let native validation block the submit before the friendlier clamp ran. Fixed with `noValidate`. The live HTML check first misparsed attribute order; the AI re-checked with exact matches instead of assuming the feature was broken. A second macOS `sed \\b` slip was caught by grep before typecheck. |
 
 ## Session Notes
 
@@ -519,3 +535,5 @@ Resolved:
     `node_modules/.bin/prisma` or go through npm scripts.
   - Run long commands (build, install) in the background so they don't block other
     work.
+  - macOS `sed` does not support `\b`. Use plain patterns or Python for renames.
+  - Port 3100 is used by a VS Code helper on this machine; smoke tests use 3210.

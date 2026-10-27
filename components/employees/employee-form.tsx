@@ -1,7 +1,7 @@
 "use client";
 
 import { LoaderCircle } from "lucide-react";
-import { useId, useState, type FormEvent, type ReactNode } from "react";
+import { useId, useState, type SubmitEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -134,7 +134,7 @@ export function EmployeeForm({
     return result.success ? { body: changes } : { errors: zodFieldErrors(result.error) };
   }
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
     const payload = buildPayload();

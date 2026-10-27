@@ -75,8 +75,10 @@ Compose them in feature components instead.
 - **Filters use `native-select`, not the Radix `select`.** A native `<select>` gives
   full keyboard and screen reader support and the platform picker on mobile. It is
   also testable in jsdom with `fireEvent.change`.
-- **Pagination is built from Button and Link** rather than shadcn's pagination block,
-  because the pages are plain links built by `directoryHref`.
+- **Pagination is the shared `components/common/pagination.tsx`**, built from Button
+  and Link rather than shadcn's pagination block, so every control is a plain link
+  (canonical URL, works without JS, prefetched). See "Pagination" under Layout
+  Patterns.
 - **The `sonner` wrapper follows `next-themes`.** The app is light-only, so render
   `<Toaster theme="light" />` instead of editing the protected file.
 
@@ -93,8 +95,24 @@ Charts use Recharts, wrapped in `components/insights/*`, and take colours from t
   "Add employee" primary button on the right. A toolbar holds the search input
   (debounced 300ms), filter selects for country, department and title, and a "Show
   terminated" toggle. Next comes a table inside a card, with a sticky header and
-  sortable column headers that show a direction icon. The footer has pagination with
-  "Showing 1–50 of 10,000" and page size. A row click opens the employee detail.
+  sortable column headers that show a direction icon. The footer holds the shared
+  pagination. A row's name links to the employee detail.
+- **Pagination** (directory and salary history):
+  - The left side reads "Showing **301–350** of **10,000** employees", followed by
+    a "Rows per page" select (25 / 50 / 100, directory only).
+  - The right side is the page navigation: `« ‹ 1 … 6 [7] 8 … 200 › »`.
+    - There are always 7 number slots (first, last, current ± 1, and ellipses only
+      when they hide at least 2 pages), so the control never changes width while
+      paging.
+    - The current page is a filled button with `aria-current="page"`. Ellipses are
+      `aria-hidden`. Icon buttons have labels. Disabled ends render as disabled
+      buttons, not dead links.
+  - "Go to page" appears at `lg` and wider when there are more than 7 pages. Input
+    is clamped to the valid range; native validation is off so the clamp, not a
+    browser bubble, handles "500".
+  - Below `sm`, the number strip collapses to "Page 7 of 200" between ‹ and ›.
+  - A page past the end offers "Go to the last page".
+  - A single page shows only the summary.
 - **Form (create/edit):** A right-side Sheet (480px) holds a single-column form with
   labels above the fields. Errors appear inline under each field, using the same Zod
   schema as the API. The salary input is in major units, with the currency shown as a

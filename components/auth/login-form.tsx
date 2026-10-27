@@ -2,7 +2,7 @@
 
 import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, type SubmitEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,7 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     setPending(true);
