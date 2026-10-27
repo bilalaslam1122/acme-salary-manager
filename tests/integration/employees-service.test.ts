@@ -3,6 +3,7 @@ import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import {
   createEmployee,
   getEmployee,
+  getEmployeeDetail,
   terminateEmployee,
   updateEmployee,
 } from "@/lib/services/employees";
@@ -182,5 +183,21 @@ describe("terminateEmployee", () => {
 describe("getEmployee", () => {
   it("throws NotFoundError for an unknown id", async () => {
     await expect(getEmployee(12345)).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("getEmployeeDetail", () => {
+  it("adds the salary in USD cents at the active FX version", async () => {
+    const employee = await create({ countryCode: "GB", salaryMinor: 5_000_000 });
+
+    const detail = await getEmployeeDetail(employee.id);
+
+    expect(detail.salaryUsdCents).toBe(6_350_000); // £50,000 × 1.27
+    expect(detail.fx?.version).toBe("2026-10");
+    expect(detail.employee.id).toBe(employee.id);
+  });
+
+  it("throws NotFoundError for an unknown id", async () => {
+    await expect(getEmployeeDetail(12345)).rejects.toThrow(NotFoundError);
   });
 });

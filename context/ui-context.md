@@ -65,8 +65,10 @@ are **protected**: add them with `npx shadcn add <name>` and do not hand-edit th
 Compose them in feature components instead.
 
 - **Installed so far:** button, input, label, native-select, table, sheet, card,
-  badge, skeleton, switch, separator and sonner.
-- **Expected later:** dialog, alert-dialog, combobox (command + popover) and tabs.
+  badge, skeleton, switch, separator, sonner and alert-dialog.
+- **Expected later:** tabs, for Insights.
+- **The job title field is an `<input>` with a `<datalist>`**, not a command+popover
+  combobox (AD-33). It suggests the titles in use and still accepts a new one.
 - **Filters use `native-select`, not the Radix `select`.** A native `<select>` gives
   full keyboard and screen reader support and the platform picker on mobile. It is
   also testable in jsdom with `fireEvent.change`.

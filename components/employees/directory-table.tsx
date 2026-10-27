@@ -63,9 +63,12 @@ export function DirectoryTable({ rows, query }: DirectoryTableProps) {
           <TableRow key={employee.id}>
             <TableCell>
               <div className="flex items-center gap-2">
-                <span className="font-medium">
+                <Link
+                  href={`/employees/${employee.id}`}
+                  className="font-medium hover:underline"
+                >
                   {employee.lastName}, {employee.firstName}
-                </span>
+                </Link>
                 {employee.terminatedAt && <Badge variant="secondary">Terminated</Badge>}
               </div>
               <div className="text-xs text-muted-foreground">{employee.email}</div>

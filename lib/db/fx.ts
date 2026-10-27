@@ -43,3 +43,19 @@ export async function queryActiveFx(): Promise<ActiveFx | null> {
       }
     : null;
 }
+
+/** One employee's current salary in USD cents; null if their currency has no rate. */
+export async function queryEmployeeSalaryUsdCents(
+  employeeId: number,
+): Promise<number | null> {
+  const [row] = await prisma.$queryRaw<{ usd_cents: bigint | null }[]>`
+    WITH ${activeFxVersionCte}
+    SELECT ${salaryUsdCentsSql} AS usd_cents
+    FROM employees e
+    JOIN countries c ON c.code = e.country_code
+    LEFT JOIN exchange_rates r
+      ON r.currency_code = e.salary_currency
+     AND r.version = (SELECT version FROM active_fx)
+    WHERE e.id = ${employeeId}`;
+  return row?.usd_cents == null ? null : Number(row.usd_cents);
+}

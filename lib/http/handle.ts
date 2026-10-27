@@ -8,6 +8,7 @@ import {
   UnauthorizedError,
   ValidationError,
 } from "@/lib/errors";
+import { zodFieldErrors } from "@/lib/validation/field-errors";
 
 export interface ErrorBody {
   error: { code: string; message: string; details?: unknown };
@@ -70,7 +71,7 @@ class RequestValidationError extends Error {
 export function toErrorResponse(error: unknown): NextResponse<ErrorBody> {
   if (error instanceof RequestValidationError) {
     return errorResponse(400, "VALIDATION_ERROR", "Invalid request", {
-      fieldErrors: fieldErrorsFrom(error.zodError),
+      fieldErrors: zodFieldErrors(error.zodError),
     });
   }
   if (error instanceof ValidationError) {
@@ -110,13 +111,4 @@ export function handle<Args extends unknown[]>(
       return toErrorResponse(error);
     }
   };
-}
-
-function fieldErrorsFrom(error: z.ZodError): Record<string, string> {
-  const fieldErrors: Record<string, string> = {};
-  for (const issue of error.issues) {
-    const key = issue.path.length > 0 ? issue.path.join(".") : "_root";
-    fieldErrors[key] ??= issue.message;
-  }
-  return fieldErrors;
 }

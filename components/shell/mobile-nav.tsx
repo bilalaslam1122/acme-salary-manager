@@ -1,22 +1,19 @@
 "use client";
 
 import { Menu } from "lucide-react";
-import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useState, type MouseEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 /** Below 1024px the sidebar collapses into a sheet (ui-context.md). */
 export function MobileNav({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [lastPathname, setLastPathname] = useState(pathname);
 
-  // Close after navigation. Children are server-rendered, so no onClick callback can
-  // reach the links; React's "adjust state on change" pattern does it during render.
-  if (pathname !== lastPathname) {
-    setLastPathname(pathname);
-    setOpen(false);
+  // Children are server-rendered, so links can't take a callback. Close on any link
+  // click via delegation instead of watching usePathname(), which would force this
+  // component under <Suspense> on dynamic routes.
+  function closeOnLinkClick(event: MouseEvent<HTMLDivElement>) {
+    if ((event.target as HTMLElement).closest("a")) setOpen(false);
   }
 
   return (
@@ -28,7 +25,9 @@ export function MobileNav({ children }: { children: ReactNode }) {
       </SheetTrigger>
       <SheetContent side="left" className="w-60 p-0">
         <SheetTitle className="sr-only">Navigation</SheetTitle>
-        {children}
+        <div className="h-full" onClick={closeOnLinkClick}>
+          {children}
+        </div>
       </SheetContent>
     </Sheet>
   );

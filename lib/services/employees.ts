@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db/client";
+import { queryActiveFx, queryEmployeeSalaryUsdCents, type ActiveFx } from "@/lib/db/fx";
 import { Prisma } from "@/lib/db/generated/prisma/client";
 import { ConflictError, NotFoundError, ValidationError } from "@/lib/errors";
 import type { CreateEmployeeInput, UpdateEmployeeInput } from "@/lib/validation/employee";
@@ -69,6 +70,23 @@ export async function getEmployee(id: number): Promise<EmployeeDto> {
   });
   if (!row) throw new NotFoundError(`Employee ${id} not found`);
   return toEmployeeDto(row);
+}
+
+export interface EmployeeDetail {
+  employee: EmployeeDto;
+  /** Current salary at the active FX version; null if the currency has no rate. */
+  salaryUsdCents: number | null;
+  fx: ActiveFx | null;
+}
+
+/** Employee plus USD-normalized salary for the detail page. */
+export async function getEmployeeDetail(id: number): Promise<EmployeeDetail> {
+  const [employee, salaryUsdCents, fx] = await Promise.all([
+    getEmployee(id),
+    queryEmployeeSalaryUsdCents(id),
+    queryActiveFx(),
+  ]);
+  return { employee, salaryUsdCents, fx };
 }
 
 /** Creates an employee and their initial SalaryHistory row atomically. */

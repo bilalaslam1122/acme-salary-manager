@@ -4,6 +4,7 @@ import { DirectoryPagination } from "@/components/employees/directory-pagination
 import { DirectorySkeleton } from "@/components/employees/directory-skeleton";
 import { DirectoryTable } from "@/components/employees/directory-table";
 import { DirectoryToolbar } from "@/components/employees/directory-toolbar";
+import { EmployeeSheet } from "@/components/employees/employee-sheet";
 import { Card } from "@/components/ui/card";
 import { listEmployees } from "@/lib/services/employee-directory";
 import { getReferenceData } from "@/lib/services/reference";
@@ -39,7 +40,10 @@ async function Directory({
 
   return (
     <div className="flex flex-col gap-4">
-      <DirectoryToolbar query={query} reference={reference} />
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <DirectoryToolbar query={query} reference={reference} />
+        <EmployeeSheet reference={reference} />
+      </div>
       <p className="text-sm text-muted-foreground" aria-live="polite">
         {countFormat.format(result.meta.total)}{" "}
         {result.meta.total === 1 ? "employee" : "employees"}

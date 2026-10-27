@@ -4,12 +4,11 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 8, app shell, login and directory UI: complete. Phase 9 is next.
+- Phase 9, employee form, detail and history UI: complete. Phase 10 is next.
 
 ## Current Goal
 
-- Phase 9: UI: the create/edit employee sheet, the terminate confirmation, and the
-  employee detail page with history.
+- Phase 10: UI: the insights dashboard with stat cards and charts.
 
 ## Completed
 
@@ -124,6 +123,32 @@ Update this file after every meaningful implementation change.
       - Smoke-tested on `next start`: 42 ms render with the USD sort, and a clean
         server log.
       - Known gap: the Insights nav link returns 404 until Phase 10.
+- [x] Phase 9:
+      - Create/edit form in a 480 px Sheet.
+        - It validates with the API's own Zod schemas, then shows server field
+          errors (including the 409 duplicate email) inline on the same fields.
+        - Salary is entered in major units. `parseMajorToMinor` converts it without
+          floating-point maths and rejects decimals for JPY.
+        - The currency suffix follows the selected country.
+        - Edits send only the changed fields. A country change always includes the
+          salary, and the "Reason for change" field appears only when the salary
+          changes.
+      - The terminate button sits behind an AlertDialog. Terminated employees are
+        read-only: no Edit or Terminate (Q10).
+      - `/employees/[id]` (partial prerender) shows a header with local salary and
+        USD at the active FX version, plus a paginated salary history table (date,
+        previous, new, change %, a GBP → JPY marker for currency moves, reason, and
+        changed by, where null shows as "System"). It also has not-found and error
+        states.
+      - The directory gets an "Add employee" button and name links to the detail
+        page. Toasts use `<Toaster theme="light">`.
+      - `zodFieldErrors` is shared by `handle.ts` and the form.
+      - `getEmployeeDetail` takes its USD figure from the same SQL fragment as the
+        directory.
+      - 31 new tests (unit, component and integration).
+      - Smoke-tested on `next start`: a full create → raise → terminate cycle
+        through the API, checking the detail HTML after each step, with zero log
+        errors.
 
 ## In Progress
 
@@ -154,7 +179,7 @@ Each bullet is one verifiable unit and one commit.
       cookie, and `proxy.ts` (+ tests).
 - [x] **Phase 8:** `feat:` UI: the app shell, login page, and employee directory table
       with URL-driven filters.
-- [ ] **Phase 9:** `feat:` UI: the create/edit employee sheet, terminate confirmation,
+- [x] **Phase 9:** `feat:` UI: the create/edit employee sheet, terminate confirmation,
       and employee detail with history.
 - [ ] **Phase 10:** `feat:` UI: the insights dashboard with stat cards and charts.
 - [ ] **Phase 11:** `chore:` Polish the empty, error and loading states, verify the
@@ -398,6 +423,29 @@ Resolved:
     no form. The fix reads `window.location` at submit time.
   - Both were found only by inspecting the live server's HTML and logs. That check
     is now a standing rule in code-standards.md.
+  - Phase 9 addition: `usePathname()` is URL data, so on a dynamic route
+    (`/employees/[id]`) any client component that reads it must sit under
+    `<Suspense>`, or the build fails. The nav now has a static `NavLinksView`
+    fallback, and the mobile sheet closes on link clicks by event delegation,
+    without `usePathname`.
+- **AD-31: The form validates with the API's Zod schemas, and the server stays
+  authoritative.** The client parse gives instant inline errors with no extra
+  request. Server-only rules (unknown department, duplicate email) come back as
+  `fieldErrors` and land on the same fields. The PATCH diff sends only changed
+  fields, so the history records exactly what the user changed.
+  *Alternative:* react-hook-form plus a resolver, a dependency this single form
+  doesn't need.
+- **AD-32: A missing employee returns HTTP 200 with the not-found UI and a
+  `noindex` meta tag.** Under Cache Components, the detail page streams inside
+  Suspense, so `notFound()` runs after the 200 headers are sent. Next then renders
+  `not-found.tsx` and adds `noindex`. For an internal, authenticated tool, the
+  correct UI plus noindex is acceptable. The API still returns a true 404.
+  *Alternative:* resolving the employee outside Suspense blocks the whole shell on
+  a DB read on every request.
+- **AD-33: The job title input is an `<input>` with a `<datalist>` of titles in
+  use.** It is not the command+popover combobox from ui-context.md. It is native,
+  accessible, works with keyboard and mobile, needs no new dependency, and still
+  allows a new title (Q5: free text).
 
 ## AI Prompts Log
 
@@ -413,6 +461,7 @@ Resolved:
 | 8 | 2026-10-27 | "start where you left off" (new session, Phase 6) | The AI reread the context files and the git state first. Rollback was tested with a realistic failure (a broken `changed_by_id` FK) rather than a mock. The concurrency test was proven meaningful by mutation: without `FOR UPDATE` it fails in 3 of 5 runs, and with the lock it passes 5 of 5. The build is confirmed clean before committing. |
 | 9 | 2026-10-27 | "continue" (Phase 7, auth) | The AI read the Next 16 `proxy.md` first (Node runtime, matcher syntax, and the docs' advice not to rely on the proxy alone), which led to the two-layer design (AD-26). A new env test exposed a real Phase 3 bug: Zod 4's `z.email().trim()` validates before trimming. It was fixed in all 3 schemas, with a regression test. A mutation check (removing `requireSession` from one route) confirmed the 401 sweep catches it. Beyond the unit tests, it ran a 10-step `curl` smoke test against `next start`: redirects, 401s, cookie flags, login, logout and static assets. The generated dev password went only into the gitignored `.env` and was never printed. |
 | 10 | 2026-10-27 | "yes" (Phase 8, first UI) | The AI read the Cache Components and Suspense docs first.<br>• Logic was kept in pure, tested helpers, because async server components can't run in Vitest.<br>• A component test exposed non-canonical URLs (parameter order depended on click order). Fixed.<br>• The production build was clean, but inspecting `next start` HTML and logs found 2 issues that tests and the build missed: a prerender clock error, and a login form missing from the HTML (AD-30).<br>• A smoke run first gave false results: `pkill` missed the old server, so a stale process served mismatched build files. The AI noticed the inconsistency, freed the port by PID, and re-verified on a fresh server.<br>• No browser was connected, so visual review is pending with the user. |
+| 11 | 2026-10-27 | "yes" (Phase 9) | The AI narrowed the untrusted API error body with type guards after a type error exposed an unsafe union. The production build failed (`usePathname` outside Suspense on the new dynamic route), but a `grep` pipeline had masked the exit code. The AI caught the real failure in the log, fixed it (AD-30 addendum), switched to checking the build's real exit status, and confirmed the earlier phases' builds were genuine passes (their logs print the route table, which failed builds never do). Live smoke test: a full create → raise → terminate cycle checked through the detail page HTML, with zero errors in the server log. The not-found HTTP 200 was investigated, confirmed as Next streaming behaviour, and recorded (AD-32). |
 
 ## Session Notes
 

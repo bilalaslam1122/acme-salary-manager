@@ -51,6 +51,11 @@
     rendering. Read `window.location` in event handlers instead.
 - After every UI unit, run `next start` and check the server log for prerender
   errors. These appear only at request time, not in the build.
+- Judge a build by its exit status (`npm run build; echo $?`), never by grepping its
+  output. A `| grep` pipeline returns grep's status and once hid a failed build.
+- Client components that read URL data (`usePathname`, `useSearchParams`) must
+  render under `<Suspense>` on dynamic routes, with a static fallback. Prefer
+  designs that don't need them, such as event delegation.
 - Use `loading.tsx` and `error.tsx` for each route segment, and `not-found.tsx` for
   missing employees.
 - After a mutation, refresh data with `router.refresh()`. Do not keep a parallel

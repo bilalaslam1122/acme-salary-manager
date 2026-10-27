@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { NavLinks } from "./nav-links";
+import { NavLinks, NavLinksView } from "./nav-links";
 import { UserBlock } from "./user-block";
 
 export function SidebarContent() {
@@ -10,7 +10,9 @@ export function SidebarContent() {
         <p className="text-base font-semibold">ACME</p>
         <p className="text-xs text-muted-foreground">Salary Manager</p>
       </div>
-      <NavLinks />
+      <Suspense fallback={<NavLinksView pathname={null} />}>
+        <NavLinks />
+      </Suspense>
       <div className="mt-auto border-t pt-4">
         <Suspense fallback={<Skeleton className="h-9 w-full" />}>
           <UserBlock />
